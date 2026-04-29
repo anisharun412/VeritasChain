@@ -2,7 +2,6 @@ pragma circom 2.1.6;
 
 include "circomlib/circuits/comparators.circom";
 include "circomlib/circuits/bitify.circom";
-include "circomlib/circuits/iszero.circom";
 
 /// @title TempRange
 /// @notice Zero-knowledge temperature compliance circuit for VeritasChain.
@@ -73,6 +72,9 @@ template TempRange(MAX_READINGS) {
     signal readingShifted[MAX_READINGS];
     component readingBits[MAX_READINGS];
 
+    signal inRange[MAX_READINGS];
+    signal readingResult[MAX_READINGS];
+
     signal allOk[MAX_READINGS + 1];
     allOk[0] <== 1;
 
@@ -97,18 +99,16 @@ template TempRange(MAX_READINGS) {
         leMax[i].in[1] <== readingShifted[i];
 
         // inRange = geMin AND leMax
-        signal inRange;
-        inRange <== geMin[i].out * leMax[i].out;
+        inRange[i] <== geMin[i].out * leMax[i].out;
 
         // result = isActive ? inRange : 1  (inactive readings auto-pass)
         // result = isActive * inRange + (1 - isActive) * 1
         //        = isActive * inRange + 1 - isActive
         //        = 1 - isActive * (1 - inRange)
-        signal readingResult;
-        readingResult <== 1 - isActive[i].out * (1 - inRange);
+        readingResult[i] <== 1 - isActive[i].out * (1 - inRange[i]);
 
         // Accumulate
-        allOk[i + 1] <== allOk[i] * readingResult;
+        allOk[i + 1] <== allOk[i] * readingResult[i];
     }
 
     ok <== allOk[MAX_READINGS];

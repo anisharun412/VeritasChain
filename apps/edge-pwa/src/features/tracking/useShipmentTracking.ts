@@ -34,7 +34,7 @@ export function useShipmentTracking(userRole: UserRole | null, shipmentId?: stri
   // ─── Try Socket.io, fall back to mock simulation ──────────────────
 
   const trySocket = useCallback(() => {
-    const url = (import.meta as any).env?.VITE_TRACKING_SERVER_URL || 'http://localhost:3001';
+    const url = (import.meta as any).env?.VITE_TRACKING_SERVER_URL || 'http://localhost:3002';
 
     try {
       // Dynamic import to avoid blocking if socket.io-client has issues

@@ -12,6 +12,7 @@ import { verifySeal } from '../nfc/sealVerifier';
 import { readTemperatureLogger } from '../nfc/tempReader';
 import { generateTemperatureProof } from '../zk/proofGenerator';
 import { assembleHandoffBundle } from '../handoff/bundleAssembler';
+import { ChainSubmit } from '../features/blockchain/ChainSubmit';
 import type { SealResult, TempResult, ZKResult, HandoffBundle } from '../types/physicalLayer';
 
 // ── Sidebar step list ─────────────────────────────────────────────────────────
@@ -437,7 +438,15 @@ function Step4({ onComplete }: { onComplete: (b: HandoffBundle) => void }) {
           <p className="vc-body">Bundle stored locally and will sync to the blockchain when online.</p>
         </div>
         <HandoffSummaryCard bundle={bundle} />
-        <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
+        <div style={{ marginTop: 8 }}>
+          <ChainSubmit 
+            shipmentId={bundle.shipmentId}
+            merkleRoot={bundle.temperatureData.merkleRoot}
+            zkProofHash={bundle.temperatureProof.proofType === 'GROTH16' ? '0x01' : '0x00'}
+            mode={bundle.status === 'OK' ? 'send' : 'contest'}
+          />
+        </div>
+        <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap', marginTop: 12 }}>
           <button className="vc-btn vc-btn-primary vc-btn-lg" onClick={() => navigate('/physical')}>+ New Verification</button>
           <button className="vc-btn vc-btn-outline vc-btn-lg" onClick={() => navigate('/physical/history')}>View History</button>
         </div>

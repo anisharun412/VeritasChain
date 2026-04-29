@@ -109,7 +109,7 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', activeShipments: Object.keys(progressMap).length });
 });
 
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.PORT || 3002;
 server.listen(PORT, () => {
   console.log(`Tracking server running on http://localhost:${PORT}`);
 });
