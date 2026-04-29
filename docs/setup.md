@@ -45,4 +45,14 @@ From `docker/`:
 - `docker compose up -d`
 - `docker compose down`
 
+## Local prover (optional)
+From repo root:
+- `pnpm -C services/prover install`
+- `pnpm -C services/prover build:artifacts`
+- `pnpm -C services/prover start`
+
+Set `PROVER_URL=http://localhost:4001` in `packages/services/.env` to use it.
+
+Requires Circom 2.x on PATH.
+
 Set `ANVIL_FORK_URL` to fork an Arbitrum RPC endpoint when starting Anvil.
