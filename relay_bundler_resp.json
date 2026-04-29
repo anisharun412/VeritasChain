@@ -1,0 +1,1 @@
+{"error":"bundler_error","details":{"message":"verificationGasLimit must be at least 10000","code":-32602}}
