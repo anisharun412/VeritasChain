@@ -160,6 +160,8 @@ contract ShipmentRegistry is AccessControl, ReentrancyGuard {
 
         ShipmentStatus prev = s.status;
         require(prev != newStatus, "status unchanged");
+        require(prev != ShipmentStatus.CONTESTED, "terminal state: contested");
+        require(prev != ShipmentStatus.RECALLED, "terminal state: recalled");
 
         // CONTESTED and RECALLED are always reachable from any state.
         if (newStatus != ShipmentStatus.CONTESTED && newStatus != ShipmentStatus.RECALLED) {

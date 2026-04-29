@@ -82,6 +82,11 @@ contract FreshnessScore is AccessControl, ReentrancyGuard {
         uint64          timestamp
     );
 
+    event VerifierUpdated(
+        address indexed oldVerifier,
+        address indexed newVerifier
+    );
+
     // ─────────────────────────────────────────────────────────────────────────
     // Constants
     // ─────────────────────────────────────────────────────────────────────────
@@ -137,7 +142,7 @@ contract FreshnessScore is AccessControl, ReentrancyGuard {
     /// @param  shipmentId    Shipment to update.
     /// @param  newScore      New freshness score computed by the prover (0-100).
     /// @param  proof         Groth16 proof bytes.
-    /// @param  publicSignals Public signals array containing [previousScore, newScore].
+    /// @param  publicSignals Public signals array containing [newScore, previousScore].
     function updateScoreWithProof(
         bytes32 shipmentId,
         uint8   newScore,
@@ -153,8 +158,8 @@ contract FreshnessScore is AccessControl, ReentrancyGuard {
         require(publicSignals.length == 2, "invalid public signals");
 
         uint8 previous = rec.score;
-        require(publicSignals[0] == uint256(previous), "signal previous mismatch");
-        require(publicSignals[1] == uint256(newScore), "signal new mismatch");
+        require(publicSignals[0] == uint256(newScore), "signal new mismatch");
+        require(publicSignals[1] == uint256(previous), "signal previous mismatch");
         require(newScore <= previous, "newScore > previous");
         require(newScore <= 100, "newScore > 100");
 
@@ -191,7 +196,9 @@ contract FreshnessScore is AccessControl, ReentrancyGuard {
         onlyRole(ADMIN_ROLE)
     {
         require(verifierAddress != address(0), "invalid verifier");
+        address oldVerifier = address(verifier);
         verifier = IFreshnessVerifier(verifierAddress);
+        emit VerifierUpdated(oldVerifier, verifierAddress);
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -215,6 +222,7 @@ contract FreshnessScore is AccessControl, ReentrancyGuard {
         uint8 previous = rec.score;
         rec.score         = newScore;
         rec.lastUpdatedAt = uint64(block.timestamp);
+        rec.lastProofHash = bytes32(0);
         rec.updateCount  += 1;
 
         emit FreshnessUpdated(

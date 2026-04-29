@@ -55,22 +55,33 @@ template FreshnessModel() {
 
     // ── Calculations ─────────────────────────────────────────────────────────
 
-    // timePenalty (scaled 1e6) = elapsedHours * baseDecayRate
-    timePenalty <== elapsedHours * baseDecayRate;
+    signal scaledElapsedHours;
+    signal scaledExcursionCount;
+    scaledElapsedHours <== elapsedHours * 1000;
+    scaledExcursionCount <== excursionCount * 1000;
+
+    // timePenalty (scaled 1e6) = scaledElapsedHours * baseDecayRate
+    timePenalty <== scaledElapsedHours * baseDecayRate;
 
     // excursionIntPenalty (scaled 1e6) = tempIntegral * excursionWeight
     excursionIntPenalty <== tempIntegral * excursionWeight;
 
-    // flatPenalty (scaled 1e6) = excursionCount * excursionPenalty
-    flatPenalty <== excursionCount * excursionPenalty;
+    // flatPenalty (scaled 1e6) = scaledExcursionCount * excursionPenalty
+    flatPenalty <== scaledExcursionCount * excursionPenalty;
 
     // totalPenaltyScaled (scaled 1e6)
     totalPenaltyScaled <== timePenalty + excursionIntPenalty + flatPenalty;
 
     // Divide by 1e6 to get penalty in score points.
+    totalPenalty <-- totalPenaltyScaled \ 1000000;
+    remainder <-- totalPenaltyScaled % 1000000;
+
     // Enforce: totalPenaltyScaled = totalPenalty * 1e6 + remainder
     // with 0 <= remainder < 1e6 (integer division).
     totalPenaltyScaled === totalPenalty * 1000000 + remainder;
+
+    component remBits = Num2Bits(20);
+    remBits.in <== remainder;
 
     component remRange = LessThan(20); // 2^20 = 1,048,576
     remRange.in[0] <== remainder;
@@ -130,4 +141,4 @@ template FreshnessModel() {
     totalPenaltyBits.in <== totalPenalty;
 }
 
-component main { public [previousScore, newScore] } = FreshnessModel();
+component main { public [previousScore] } = FreshnessModel();

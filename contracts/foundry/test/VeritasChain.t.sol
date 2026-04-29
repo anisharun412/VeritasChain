@@ -213,8 +213,8 @@ contract VeritasChainTest is Test {
         freshness.initialize(shipmentId);
         bytes memory proof = hex"01";
         uint256[] memory signals = new uint256[](2);
-        signals[0] = 100;
-        signals[1] = 85;
+        signals[0] = 85;
+        signals[1] = 100;
 
         freshness.updateScoreWithProof(shipmentId, 85, proof, signals);
         assertEq(freshness.getScore(shipmentId), 85);
@@ -225,8 +225,8 @@ contract VeritasChainTest is Test {
         freshness.initialize(shipmentId);
         bytes memory proof = hex"02";
         uint256[] memory signals = new uint256[](2);
-        signals[0] = 100;
-        signals[1] = 0;
+        signals[0] = 0;
+        signals[1] = 100;
 
         freshness.updateScoreWithProof(shipmentId, 0, proof, signals);
         assertEq(freshness.getScore(shipmentId), 0);
@@ -237,8 +237,8 @@ contract VeritasChainTest is Test {
         freshness.initialize(shipmentId);
         bytes memory proof = hex"03";
         uint256[] memory signals = new uint256[](2);
-        signals[0] = 100;
-        signals[1] = 25;
+        signals[0] = 25;
+        signals[1] = 100;
 
         // Penalty 75: score goes 100 → 25, crossing the CRITICAL_THRESHOLD of 30.
         vm.expectEmit(true, false, false, false);
@@ -425,8 +425,8 @@ contract VeritasChainTest is Test {
         // 6. Update freshness with ZK proof
         bytes memory proof = hex"06";
         uint256[] memory signals = new uint256[](2);
-        signals[0] = 100;
-        signals[1] = 94;
+        signals[0] = 94;
+        signals[1] = 100;
         freshness.updateScoreWithProof(sid, 94, proof, signals);
         assertEq(freshness.getScore(sid), 94); // 100 - 6
 
@@ -461,11 +461,11 @@ contract VeritasChainTest is Test {
         bytes memory proof1 = hex"11";
         bytes memory proof2 = hex"12";
         uint256[] memory signals1 = new uint256[](2);
-        signals1[0] = 100;
-        signals1[1] = 20;
+        signals1[0] = 20;
+        signals1[1] = 100;
         uint256[] memory signals2 = new uint256[](2);
-        signals2[0] = 20;
-        signals2[1] = 10;
+        signals2[0] = 10;
+        signals2[1] = 20;
 
         // First penalty: 100 → 20 (crosses threshold, event emitted)
         freshness.updateScoreWithProof(shipmentId, 20, proof1, signals1);

@@ -346,6 +346,7 @@ contract DWHVerifier is AccessControl, ReentrancyGuard, EIP712 {
         if (latest == bytes32(0)) {
             require(prevHandoffHash == bytes32(0), "prev handoff required");
         } else {
+            require(!handoffRecords[latest].contested, "prev handoff contested");
             require(prevHandoffHash == latest, "prev handoff mismatch");
         }
     }
@@ -389,8 +390,10 @@ contract DWHVerifier is AccessControl, ReentrancyGuard, EIP712 {
         view
         returns (bytes32)
     {
-        require(latestHandoff[shipmentId] != bytes32(0), "no handoff for shipment");
-        return handoffRecords[latestHandoff[shipmentId]].merkleRoot;
+        bytes32 latest = latestHandoff[shipmentId];
+        require(latest != bytes32(0), "no handoff for shipment");
+        require(!handoffRecords[latest].contested, "handoff contested");
+        return handoffRecords[latest].merkleRoot;
     }
 
     /// @notice Returns the EIP-712 digest to sign for a handoff.

@@ -8,6 +8,7 @@ import "../src/FreshnessScore.sol";
 import "../src/InteroperabilityAnchor.sol";
 import "../src/RegulatorVaultAccess.sol";
 import "../src/PostHashAnchors.sol";
+import "../src/FreshnessVerifier.sol";
 
 /// @notice Foundry deployment script for the full VeritasChain on-chain layer.
 ///         Run with:
@@ -16,21 +17,21 @@ import "../src/PostHashAnchors.sol";
 ///
 ///         Environment variables:
 ///           APPROVAL_THRESHOLD   Number of regulator co-sigs required (default 2)
-///           DEPLOYER_ADDRESS     Address that receives all admin roles (defaults to broadcaster)
+///           PRIVATE_KEY          Deployer private key (used to derive deployer address via vm.addr)
 contract DeployScript is Script {
     function run() external {
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
         address deployer = vm.addr(deployerPrivateKey);
 
-        uint8 approvalThreshold = uint8(vm.envOr("APPROVAL_THRESHOLD", uint256(2)));
-        address freshnessVerifier = vm.envAddress("FRESHNESS_VERIFIER");
+        uint16 approvalThreshold = uint16(vm.envOr("APPROVAL_THRESHOLD", uint256(2)));
 
         vm.startBroadcast(deployerPrivateKey);
 
         // ── Deploy contracts ──────────────────────────────────────────────────
         ShipmentRegistry       shipmentRegistry = new ShipmentRegistry();
         DWHVerifier            dwhVerifier      = new DWHVerifier(address(shipmentRegistry));
-        FreshnessScore         freshnessScore   = new FreshnessScore(address(shipmentRegistry), freshnessVerifier);
+        FreshnessVerifierWrapper freshnessVerifier = new FreshnessVerifierWrapper();
+        FreshnessScore         freshnessScore   = new FreshnessScore(address(shipmentRegistry), address(freshnessVerifier));
         InteroperabilityAnchor ioAnchor         = new InteroperabilityAnchor(address(dwhVerifier));
         RegulatorVaultAccess   vaultAccess      = new RegulatorVaultAccess(address(shipmentRegistry), approvalThreshold);
         PostHashAnchors        postHashAnchors  = new PostHashAnchors(address(shipmentRegistry));
@@ -64,7 +65,7 @@ contract DeployScript is Script {
         console2.log("RegulatorVaultAccess:   ", address(vaultAccess));
         console2.log("PostHashAnchors:        ", address(postHashAnchors));
         console2.log("Approval threshold:     ", approvalThreshold);
-        console2.log("Freshness verifier:     ", freshnessVerifier);
+        console2.log("Freshness verifier:     ", address(freshnessVerifier));
 
         vm.stopBroadcast();
     }

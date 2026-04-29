@@ -28,7 +28,7 @@ contract RegulatorVaultAccess is AccessControl, ReentrancyGuard {
 
     /// @notice Minimum number of regulator approvals required to trigger
     ///         decryption (threshold-of-N multi-sig).
-    uint8 public approvalThreshold;
+    uint16 public approvalThreshold;
 
     struct AccessRequest {
         bytes32 shipmentId;
@@ -36,7 +36,7 @@ contract RegulatorVaultAccess is AccessControl, ReentrancyGuard {
         bytes32 sphincsPqHash;
         address requester;
         uint64  requestedAt;
-        uint8   approvalCount;
+        uint16  approvalCount;
         bool    decryptionTriggered;
         bool    revoked;
     }
@@ -59,7 +59,7 @@ contract RegulatorVaultAccess is AccessControl, ReentrancyGuard {
     event AccessApproved(
         bytes32 indexed requestId,
         address indexed regulator,
-        uint8           totalApprovals,
+        uint16          totalApprovals,
         uint64          timestamp
     );
 
@@ -77,12 +77,12 @@ contract RegulatorVaultAccess is AccessControl, ReentrancyGuard {
         uint64          timestamp
     );
 
-    event ThresholdUpdated(uint8 oldThreshold, uint8 newThreshold);
+    event ThresholdUpdated(uint16 oldThreshold, uint16 newThreshold);
 
     // ─────────────────────────────────────────────────────────────────────────
     // Constructor
     // ─────────────────────────────────────────────────────────────────────────
-    constructor(address registryAddress, uint8 _approvalThreshold) {
+    constructor(address registryAddress, uint16 _approvalThreshold) {
         require(registryAddress != address(0), "invalid registry");
         require(_approvalThreshold > 0, "threshold must be > 0");
         shipmentRegistry = IShipmentRegistry(registryAddress);
@@ -189,13 +189,13 @@ contract RegulatorVaultAccess is AccessControl, ReentrancyGuard {
     /// @dev    Threshold change only affects NEW requests. Existing requests
     ///         that have already accumulated approvals are not re-evaluated;
     ///         they will trigger on the NEXT approveAccess call if count >= newThreshold.
-    function setApprovalThreshold(uint8 _newThreshold)
+    function setApprovalThreshold(uint16 newThreshold)
         external
         onlyRole(ADMIN_ROLE)
     {
-        require(_newThreshold > 0, "threshold must be > 0");
-        emit ThresholdUpdated(approvalThreshold, _newThreshold);
-        approvalThreshold = _newThreshold;
+        require(newThreshold > 0, "threshold must be > 0");
+        emit ThresholdUpdated(approvalThreshold, newThreshold);
+        approvalThreshold = newThreshold;
     }
 
     // ─────────────────────────────────────────────────────────────────────────
