@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
 import { useRoleAccess } from '../auth/useRoleAccess';
 import DashboardShell from './DashboardShell';
+import BlockchainPanel from '../blockchain/BlockchainPanel';
+import { UserRole } from '../auth/roles';
 
 const SHIPMENTS = [
   {
@@ -120,6 +122,11 @@ export default function ManufacturerDashboard() {
             </div>
           ))}
         </div>
+      </div>
+
+      {/* On-Chain Layer */}
+      <div style={{ marginTop: '1.25rem' }}>
+        <BlockchainPanel role={UserRole.MANUFACTURER} />
       </div>
     </DashboardShell>
   );

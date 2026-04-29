@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
 import { useRoleAccess } from '../auth/useRoleAccess';
 import DashboardShell from './DashboardShell';
+import BlockchainPanel from '../blockchain/BlockchainPanel';
+import { UserRole } from '../auth/roles';
 
 export default function CarrierDashboard() {
   const { displayName, organization } = useAuth();
@@ -76,6 +78,11 @@ export default function CarrierDashboard() {
       <div className="alert" style={{ background: 'var(--gray-100)', color: 'var(--gray-700)', border: '1px solid var(--gray-200)' }}>
         💡 As a <strong>Carrier</strong>, you are the bridge in the chain — you can both
         accept handoffs from manufacturers and initiate handoffs to the next destination.
+      </div>
+
+      {/* On-Chain Layer */}
+      <div style={{ marginTop: '1.25rem' }}>
+        <BlockchainPanel role={UserRole.CARRIER} />
       </div>
     </DashboardShell>
   );

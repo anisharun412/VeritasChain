@@ -2,6 +2,8 @@ import React from 'react';
 import { useAuth } from '../auth/AuthContext';
 import { useRoleAccess } from '../auth/useRoleAccess';
 import DashboardShell from './DashboardShell';
+import BlockchainPanel from '../blockchain/BlockchainPanel';
+import { UserRole } from '../auth/roles';
 
 const ALL_SHIPMENTS = [
   { id: 'SHIP-001', product: 'Vaccine Batch 47B', route: 'Pfizer → DHL → Mombasa', freshness: 94, status: 'in-transit', flags: 0 },
@@ -93,6 +95,11 @@ export default function RegulatorDashboard() {
       <div className="alert" style={{ background: 'var(--gray-100)', color: 'var(--gray-700)', border: '1px solid var(--gray-200)' }}>
         ⚖️ As a <strong>Regulator</strong>, you have read access to all shipments. Use the
         Deep Audit feature (with a court order) to decrypt encrypted documents.
+      </div>
+
+      {/* On-Chain Layer — Full Audit */}
+      <div style={{ marginTop: '1.25rem' }}>
+        <BlockchainPanel role={UserRole.REGULATOR} />
       </div>
     </DashboardShell>
   );

@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
 import { useRoleAccess } from '../auth/useRoleAccess';
 import DashboardShell from './DashboardShell';
+import BlockchainPanel from '../blockchain/BlockchainPanel';
+import { UserRole } from '../auth/roles';
 
 export default function ReceiverDashboard() {
   const { displayName, organization } = useAuth();
@@ -65,6 +67,11 @@ export default function ReceiverDashboard() {
       <div className="alert" style={{ background: 'var(--gray-100)', color: 'var(--gray-700)', border: '1px solid var(--gray-200)' }}>
         💡 As a <strong>Receiver</strong>, you verify the integrity of goods and sign the
         final acknowledgment on the chain. You can contest shipments if the seal or freshness fails.
+      </div>
+
+      {/* On-Chain Layer */}
+      <div style={{ marginTop: '1.25rem' }}>
+        <BlockchainPanel role={UserRole.RECEIVER} />
       </div>
     </DashboardShell>
   );

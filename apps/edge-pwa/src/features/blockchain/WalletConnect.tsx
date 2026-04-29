@@ -1,11 +1,9 @@
 import React from 'react';
 import { useMetaMask } from './useMetaMask';
-import { CONTRACT_ADDRESS } from './contractABI';
+import { contracts, allDeployed } from './contractABI';
 
 export function WalletConnect() {
-  const { isInstalled, isConnected, isConnecting, account, shortAddress, chainId, isGanache, error, connect, disconnect } = useMetaMask();
-
-  const isDeployed = CONTRACT_ADDRESS !== '0x0000000000000000000000000000000000000000';
+  const { isInstalled, isConnected, isConnecting, shortAddress, isGanache, error, connect, disconnect } = useMetaMask();
 
   // ─── Not installed ────────────────────────────────────────────────
 
@@ -58,6 +56,8 @@ export function WalletConnect() {
 
   // ─── Connected ────────────────────────────────────────────────────
 
+  const deployedCount = Object.values(contracts).filter(c => c.deployed).length;
+
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
 
@@ -76,19 +76,18 @@ export function WalletConnect() {
           background: '#FEF9C3', color: '#78350f',
           borderRadius: '9999px', fontWeight: 600,
         }}>
-          ⚠ Wrong Network (need Ganache)
+          ⚠ Wrong Network
         </span>
       )}
 
-      {/* Contract deployed badge */}
-      {isDeployed ? (
+      {/* Contracts badge */}
+      {allDeployed ? (
         <span style={{
           fontSize: '0.68rem', padding: '0.2rem 0.55rem',
           background: '#EFF6FF', color: '#1D4ED8',
           borderRadius: '9999px', fontWeight: 600,
-          fontFamily: 'monospace',
         }}>
-          📄 {CONTRACT_ADDRESS.slice(0, 8)}…
+          📄 {deployedCount}/3 contracts
         </span>
       ) : (
         <span style={{
@@ -96,7 +95,7 @@ export function WalletConnect() {
           background: '#FEF2F2', color: '#991b1b',
           borderRadius: '9999px', fontWeight: 600,
         }}>
-          ⚠ Contract not deployed
+          ⚠ {deployedCount}/3 deployed
         </span>
       )}
 

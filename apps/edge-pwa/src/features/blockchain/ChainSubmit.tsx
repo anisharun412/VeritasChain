@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useContract } from './useContract';
 import { useMetaMask } from './useMetaMask';
+import { allDeployed } from './contractABI';
 
 interface ChainSubmitProps {
   shipmentId: string;
@@ -10,22 +11,28 @@ interface ChainSubmitProps {
   mode: 'send' | 'contest';
 }
 
-const GANACHE_EXPLORER = 'http://localhost:7545'; // Ganache GUI transactions tab
-
 export function ChainSubmit({ shipmentId, merkleRoot, zkProofHash, receiverAddress, mode }: ChainSubmitProps) {
   const { isConnected, isGanache, connect } = useMetaMask();
-  const { isDeployed, isSubmitting, error, lastTx, recordHandoff, contestHandoff, clearTx } = useContract();
+  const { isSubmitting, error, lastTx, recordHandoff, contestHandoff, clearTx } = useContract();
   const [contestReason, setContestReason] = useState('');
   const [submitted, setSubmitted] = useState(false);
 
   const handleSubmit = async () => {
     if (mode === 'send') {
       const receiver = receiverAddress || '0x0000000000000000000000000000000000000001';
-      const result = await recordHandoff(shipmentId, receiver, merkleRoot, zkProofHash);
+      // For demo, we use empty prev handoff hash and dummy signatures
+      const prevHandoffHash = '0x' + '0'.repeat(64);
+      const dummySig = '0x' + '0'.repeat(130);
+      const signer = receiver; // In real flow, this comes from the MetaMask connected account
+      const result = await recordHandoff(
+        shipmentId, merkleRoot, prevHandoffHash,
+        signer, receiver, dummySig, dummySig,
+      );
       if (result) setSubmitted(true);
     } else {
       if (!contestReason.trim()) return;
-      const result = await contestHandoff(shipmentId, contestReason);
+      // For contest, we need the handoff hash — use shipmentId as placeholder for demo
+      const result = await contestHandoff(shipmentId, shipmentId, contestReason);
       if (result) setSubmitted(true);
     }
   };
@@ -104,12 +111,12 @@ export function ChainSubmit({ shipmentId, merkleRoot, zkProofHash, receiverAddre
 
   // ─── Contract not deployed ─────────────────────────────────────────
 
-  if (!isDeployed) {
+  if (!allDeployed) {
     return (
       <div className="alert alert-warning">
-        ⚠ Contract not deployed yet. Run:<br />
-        <code style={{ fontSize: '0.8rem' }}>cd packages/contracts && pnpm deploy</code>
-        <br />Then add <code>VITE_CONTRACT_ADDRESS=0x…</code> to <code>apps/edge-pwa/.env.local</code>
+        ⚠ Contracts not fully deployed. Run:<br />
+        <code style={{ fontSize: '0.8rem' }}>.\scripts\deploy-ganache.ps1</code>
+        <br />Then restart the dev server to pick up the new addresses.
       </div>
     );
   }
@@ -126,7 +133,7 @@ export function ChainSubmit({ shipmentId, merkleRoot, zkProofHash, receiverAddre
       </div>
       <div style={{ fontSize: '0.8rem', color: 'var(--gray-500)', marginBottom: '1rem' }}>
         {mode === 'send'
-          ? 'This will send a MetaMask transaction to store the Merkle root and ZK proof hash permanently on the local blockchain.'
+          ? 'This will send a MetaMask transaction to store the Merkle root and dual-witness signatures permanently on the local blockchain.'
           : 'This will flag this handoff as contested. The reason will be stored permanently on-chain.'}
       </div>
 
