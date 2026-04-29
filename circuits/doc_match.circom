@@ -1,6 +1,7 @@
 pragma circom 2.1.6;
 
 include "circomlib/circuits/poseidon.circom";
+include "circomlib/circuits/bitify.circom";
 
 /// @title DocMatch
 /// @notice Zero-knowledge document hash matching circuit for VeritasChain.
@@ -30,6 +31,12 @@ template DocMatch() {
     // ── Private signals ──────────────────────────────────────────────────────
     signal input  sphincsPqHash_hi; // high 128 bits of SPHINCS+ doc hash
     signal input  sphincsPqHash_lo; // low  128 bits of SPHINCS+ doc hash
+    component hiBits = Num2Bits(128);
+    hiBits.in <== sphincsPqHash_hi;
+
+    component loBits = Num2Bits(128);
+    loBits.in <== sphincsPqHash_lo;
+
 
     // ── Output ───────────────────────────────────────────────────────────────
     signal output match;            // always 1 if proof is valid

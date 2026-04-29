@@ -1,6 +1,8 @@
 pragma circom 2.1.6;
 
 include "circomlib/circuits/comparators.circom";
+include "circomlib/circuits/bitify.circom";
+include "circomlib/circuits/iszero.circom";
 
 /// @title TempRange
 /// @notice Zero-knowledge temperature compliance circuit for VeritasChain.
@@ -33,12 +35,43 @@ template TempRange(MAX_READINGS) {
 
     // ── Per-reading range check ───────────────────────────────────────────────
     // For each reading r: prove  min <= r  AND  r <= max
-    // Using 10-bit comparators (covers -512..511, i.e. -51.2°C to 51.1°C ×10)
+    // We offset all values by +512 to compare as unsigned 10-bit integers.
     // Readings at index >= readingCount are masked out (auto-pass).
+
+    var TEMP_OFFSET = 512;
+    signal minShifted;
+    signal maxShifted;
+    minShifted <== min + TEMP_OFFSET;
+    maxShifted <== max + TEMP_OFFSET;
+
+    component minBits = Num2Bits(10);
+    minBits.in <== minShifted;
+
+    component maxBits = Num2Bits(10);
+    maxBits.in <== maxShifted;
+
+    component maxGeMin = GreaterEqThan(10);
+    maxGeMin.in[0] <== maxShifted;
+    maxGeMin.in[1] <== minShifted;
+    maxGeMin.out === 1;
+
+    component readingCountBits = Num2Bits(6);
+    readingCountBits.in <== readingCount;
+
+    component readingCountLimit = LessThan(6);
+    readingCountLimit.in[0] <== readingCount;
+    readingCountLimit.in[1] <== MAX_READINGS + 1;
+    readingCountLimit.out === 1;
+
+    component readingCountNonZero = IsZero();
+    readingCountNonZero.in <== readingCount;
+    readingCountNonZero.out === 0;
 
     component geMin[MAX_READINGS];
     component leMax[MAX_READINGS];
     component isActive[MAX_READINGS];
+    signal readingShifted[MAX_READINGS];
+    component readingBits[MAX_READINGS];
 
     signal allOk[MAX_READINGS + 1];
     allOk[0] <== 1;
@@ -49,15 +82,19 @@ template TempRange(MAX_READINGS) {
         isActive[i].in[0] <== i;
         isActive[i].in[1] <== readingCount;
 
+        readingShifted[i] <== readings[i] + TEMP_OFFSET;
+        readingBits[i] = Num2Bits(10);
+        readingBits[i].in <== readingShifted[i];
+
         // geMin[i].out = 1 if readings[i] >= min
         geMin[i] = GreaterEqThan(10);
-        geMin[i].in[0] <== readings[i];
-        geMin[i].in[1] <== min;
+        geMin[i].in[0] <== readingShifted[i];
+        geMin[i].in[1] <== minShifted;
 
         // leMax[i].out = 1 if readings[i] <= max  (i.e. max >= readings[i])
         leMax[i] = GreaterEqThan(10);
-        leMax[i].in[0] <== max;
-        leMax[i].in[1] <== readings[i];
+        leMax[i].in[0] <== maxShifted;
+        leMax[i].in[1] <== readingShifted[i];
 
         // inRange = geMin AND leMax
         signal inRange;

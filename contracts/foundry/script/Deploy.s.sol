@@ -23,16 +23,17 @@ contract DeployScript is Script {
         address deployer = vm.addr(deployerPrivateKey);
 
         uint8 approvalThreshold = uint8(vm.envOr("APPROVAL_THRESHOLD", uint256(2)));
+        address freshnessVerifier = vm.envAddress("FRESHNESS_VERIFIER");
 
         vm.startBroadcast(deployerPrivateKey);
 
         // ── Deploy contracts ──────────────────────────────────────────────────
         ShipmentRegistry       shipmentRegistry = new ShipmentRegistry();
-        DWHVerifier            dwhVerifier      = new DWHVerifier();
-        FreshnessScore         freshnessScore   = new FreshnessScore();
-        InteroperabilityAnchor ioAnchor         = new InteroperabilityAnchor();
-        RegulatorVaultAccess   vaultAccess      = new RegulatorVaultAccess(approvalThreshold);
-        PostHashAnchors        postHashAnchors  = new PostHashAnchors();
+        DWHVerifier            dwhVerifier      = new DWHVerifier(address(shipmentRegistry));
+        FreshnessScore         freshnessScore   = new FreshnessScore(address(shipmentRegistry), freshnessVerifier);
+        InteroperabilityAnchor ioAnchor         = new InteroperabilityAnchor(address(dwhVerifier));
+        RegulatorVaultAccess   vaultAccess      = new RegulatorVaultAccess(address(shipmentRegistry), approvalThreshold);
+        PostHashAnchors        postHashAnchors  = new PostHashAnchors(address(shipmentRegistry));
 
         // ── Role wiring ───────────────────────────────────────────────────────
         // DWH → can write to InteroperabilityAnchor (after each accepted handoff)
@@ -63,6 +64,7 @@ contract DeployScript is Script {
         console2.log("RegulatorVaultAccess:   ", address(vaultAccess));
         console2.log("PostHashAnchors:        ", address(postHashAnchors));
         console2.log("Approval threshold:     ", approvalThreshold);
+        console2.log("Freshness verifier:     ", freshnessVerifier);
 
         vm.stopBroadcast();
     }

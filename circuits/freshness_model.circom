@@ -2,6 +2,7 @@ pragma circom 2.1.6;
 
 include "circomlib/circuits/comparators.circom";
 include "circomlib/circuits/mux1.circom";
+include "circomlib/circuits/bitify.circom";
 
 /// @title FreshnessModel
 /// @notice Kinetic spoilage model circuit for VeritasChain.
@@ -49,6 +50,7 @@ template FreshnessModel() {
     signal flatPenalty;
     signal totalPenaltyScaled;
     signal totalPenalty;         // unscaled (divided by 1e3)
+    signal remainder;
     signal scoreBeforeClamp;
 
     // ── Calculations ─────────────────────────────────────────────────────────
@@ -66,10 +68,14 @@ template FreshnessModel() {
     totalPenaltyScaled <== timePenalty + excursionIntPenalty + flatPenalty;
 
     // Divide by 1e6 to get penalty in score points.
-    // In Circom we use a helper signal and the constraint:
-    //   totalPenalty * 1000000 === totalPenaltyScaled
-    // This is safe because the prover supplies totalPenalty.
-    totalPenalty * 1000000 === totalPenaltyScaled;
+    // Enforce: totalPenaltyScaled = totalPenalty * 1e6 + remainder
+    // with 0 <= remainder < 1e6 (integer division).
+    totalPenaltyScaled === totalPenalty * 1000000 + remainder;
+
+    component remRange = LessThan(20); // 2^20 = 1,048,576
+    remRange.in[0] <== remainder;
+    remRange.in[1] <== 1000000;
+    remRange.out === 1;
 
     // scoreBeforeClamp = previousScore - totalPenalty
     scoreBeforeClamp <== previousScore - totalPenalty;
@@ -77,7 +83,7 @@ template FreshnessModel() {
     // ── Clamp to 0 using a comparator ────────────────────────────────────────
     // isNeg = 1 if scoreBeforeClamp < 0
     // We approximate: if penalty >= previousScore → newScore = 0
-    component isGe = GreaterEqThan(7); // 7 bits covers 0-100
+    component isGe = GreaterEqThan(32);
     isGe.in[0] <== totalPenalty;
     isGe.in[1] <== previousScore;
 
@@ -100,6 +106,28 @@ template FreshnessModel() {
     newInRange.in[0] <== newScore;
     newInRange.in[1] <== 101;
     newInRange.out === 1;
+
+    // ── Input range constraints ────────────────────────────────────────────
+    component elapsedBits = Num2Bits(32);
+    elapsedBits.in <== elapsedHours;
+
+    component tempIntegralBits = Num2Bits(32);
+    tempIntegralBits.in <== tempIntegral;
+
+    component excursionCountBits = Num2Bits(32);
+    excursionCountBits.in <== excursionCount;
+
+    component baseDecayRateBits = Num2Bits(32);
+    baseDecayRateBits.in <== baseDecayRate;
+
+    component excursionWeightBits = Num2Bits(32);
+    excursionWeightBits.in <== excursionWeight;
+
+    component excursionPenaltyBits = Num2Bits(32);
+    excursionPenaltyBits.in <== excursionPenalty;
+
+    component totalPenaltyBits = Num2Bits(32);
+    totalPenaltyBits.in <== totalPenalty;
 }
 
-component main { public [previousScore] } = FreshnessModel();
+component main { public [previousScore, newScore] } = FreshnessModel();

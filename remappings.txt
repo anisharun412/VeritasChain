@@ -1,0 +1,8 @@
+@openzeppelin/contracts/=contracts/foundry/lib/openzeppelin-contracts/contracts/
+erc4626-tests/=contracts/foundry/lib/openzeppelin-contracts/lib/erc4626-tests/
+forge-std/=contracts/foundry/lib/forge-std/src/
+halmos-cheatcodes/=contracts/foundry/lib/openzeppelin-contracts/lib/halmos-cheatcodes/src/
+openzeppelin-contracts/=contracts/foundry/lib/openzeppelin-contracts/
+src/=contracts/foundry/src/
+test/=contracts/foundry/test/
+script/=contracts/foundry/script/

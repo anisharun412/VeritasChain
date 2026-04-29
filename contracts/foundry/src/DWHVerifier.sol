@@ -4,7 +4,9 @@ pragma solidity ^0.8.26;
 import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
-import "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
+import "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
+
+import "./IShipmentRegistry.sol";
 
 /// @title DWHVerifier — Dual-Witness Handoff Verifier
 /// @notice On-chain layer for the VeritasChain DWH protocol.
@@ -23,9 +25,14 @@ import "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
 /// @dev    After a successful `recordHandoff`, callers should invoke
 ///         InteroperabilityAnchor.recordAnchor with the same Merkle root so
 ///         that LayerZero / CCIP adapters can broadcast it cross-chain.
-contract DWHVerifier is AccessControl, ReentrancyGuard {
+contract DWHVerifier is AccessControl, ReentrancyGuard, EIP712 {
     using ECDSA for bytes32;
-    using MessageHashUtils for bytes32;
+    bytes32 public constant HANDOFF_TYPEHASH = keccak256(
+        "Handoff(bytes32 shipmentId,bytes32 merkleRoot,bytes32 prevHandoffHash,address sender,address receiver,uint8 contested,bytes32 reasonHash)"
+    );
+
+    IShipmentRegistry public immutable shipmentRegistry;
+
 
     // ─────────────────────────────────────────────────────────────────────────
     // Roles
@@ -40,10 +47,12 @@ contract DWHVerifier is AccessControl, ReentrancyGuard {
     struct HandoffRecord {
         bytes32 shipmentId;
         bytes32 merkleRoot;
+        bytes32 prevHandoffHash;
         address sender;
         address receiver;
         uint64  recordedAt;
         bool    contested;
+        bytes32 reasonHash;
     }
 
     /// @notice shipmentId → latest accepted (non-contested) handoff hash.
@@ -76,7 +85,9 @@ contract DWHVerifier is AccessControl, ReentrancyGuard {
     // ─────────────────────────────────────────────────────────────────────────
     // Constructor
     // ─────────────────────────────────────────────────────────────────────────
-    constructor() {
+    constructor(address registryAddress) EIP712("VeritasChainDWH", "1") {
+        require(registryAddress != address(0), "invalid registry");
+        shipmentRegistry = IShipmentRegistry(registryAddress);
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
         _grantRole(ADMIN_ROLE, msg.sender);
         _grantRole(SUBMITTER_ROLE, msg.sender);
@@ -95,19 +106,21 @@ contract DWHVerifier is AccessControl, ReentrancyGuard {
     ///           - Document hashes for the current leg
     ///           - GPS, timestamp, and field notes hash
     ///
-    ///         Both `senderSig` and `receiverSig` must be EIP-191 personal_sign
-    ///         signatures over the Merkle root.
+    ///         Both `senderSig` and `receiverSig` must be EIP-712 typed data
+    ///         signatures over the Handoff payload.
     ///
-    /// @param  shipmentId   Unique shipment identifier.
-    /// @param  merkleRoot   Merkle root of the full handoff bundle.
-    /// @param  sender       Expected sender address (custody giver).
-    /// @param  receiver     Expected receiver address (custody taker).
-    /// @param  senderSig    EIP-191 signature from sender over merkleRoot.
-    /// @param  receiverSig  EIP-191 signature from receiver over merkleRoot.
-    /// @return handoffHash  Deterministic identifier for this handoff record.
+    /// @param  shipmentId       Unique shipment identifier.
+    /// @param  merkleRoot       Merkle root of the full handoff bundle.
+    /// @param  prevHandoffHash  Previous handoff hash in the chain.
+    /// @param  sender           Expected sender address (custody giver).
+    /// @param  receiver         Expected receiver address (custody taker).
+    /// @param  senderSig        EIP-712 signature from sender.
+    /// @param  receiverSig      EIP-712 signature from receiver.
+    /// @return handoffHash      Deterministic identifier for this handoff record.
     function recordHandoff(
         bytes32 shipmentId,
         bytes32 merkleRoot,
+        bytes32 prevHandoffHash,
         address sender,
         address receiver,
         bytes calldata senderSig,
@@ -123,44 +136,44 @@ contract DWHVerifier is AccessControl, ReentrancyGuard {
         require(sender      != address(0), "invalid sender");
         require(receiver    != address(0), "invalid receiver");
         require(sender      != receiver,   "sender == receiver");
+        require(shipmentRegistry.exists(shipmentId), "shipment not found");
+        _requirePrevHandoff(shipmentId, prevHandoffHash);
 
         // ── Verify both sender and receiver ECDSA signatures ────────────────────
-        bytes32 ethSignedRoot = merkleRoot.toEthSignedMessageHash();
-        address recoveredSender   = ethSignedRoot.recover(senderSig);
-        address recoveredReceiver = ethSignedRoot.recover(receiverSig);
-
-        if (recoveredSender != sender || recoveredReceiver != receiver) {
-            // Use `true` salt so contested hash never collides with a valid hash
-            // for the same shipment+root in the same block.
-            handoffHash = _buildHandoffHash(shipmentId, merkleRoot, true);
-            handoffRecords[handoffHash] = HandoffRecord({
-                shipmentId:  shipmentId,
-                merkleRoot:  merkleRoot,
-                sender:      sender,
-                receiver:    receiver,
-                recordedAt:  uint64(block.timestamp),
-                contested:   true
-            });
-            emit HandoffContested(
-                shipmentId,
-                handoffHash,
-                msg.sender,
-                "ECDSA signature mismatch",
-                uint64(block.timestamp)
-            );
-            return handoffHash;
-        }
+        bytes32 digest = _hashHandoff(
+            shipmentId,
+            merkleRoot,
+            prevHandoffHash,
+            sender,
+            receiver,
+            0,
+            bytes32(0)
+        );
+        address recoveredSender   = digest.recover(senderSig);
+        address recoveredReceiver = digest.recover(receiverSig);
+        require(recoveredSender == sender && recoveredReceiver == receiver, "signature mismatch");
 
         // ── Both signatures valid — commit record ────────────────────────────
-        handoffHash = _buildHandoffHash(shipmentId, merkleRoot, false);
+        handoffHash = _buildHandoffHash(
+            shipmentId,
+            merkleRoot,
+            prevHandoffHash,
+            sender,
+            receiver,
+            false,
+            bytes32(0)
+        );
+        require(handoffRecords[handoffHash].recordedAt == 0, "handoff already recorded");
 
         handoffRecords[handoffHash] = HandoffRecord({
             shipmentId:  shipmentId,
             merkleRoot:  merkleRoot,
+            prevHandoffHash: prevHandoffHash,
             sender:      sender,
             receiver:    receiver,
             recordedAt:  uint64(block.timestamp),
-            contested:   false
+            contested:   false,
+            reasonHash:  bytes32(0)
         });
 
         latestHandoff[shipmentId] = handoffHash;
@@ -171,6 +184,81 @@ contract DWHVerifier is AccessControl, ReentrancyGuard {
             merkleRoot,
             sender,
             receiver,
+            uint64(block.timestamp)
+        );
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Contested handoff submission (single-party signed)
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// @notice Record a contested handoff when one party refuses to co-sign.
+    ///         The contested party must sign the same handoff payload with
+    ///         `contested = 1` and a `reasonHash` derived from the reason string.
+    function recordContestedHandoff(
+        bytes32 shipmentId,
+        bytes32 merkleRoot,
+        bytes32 prevHandoffHash,
+        address sender,
+        address receiver,
+        address contestedBy,
+        string  calldata reason,
+        bytes   calldata contestedSig
+    )
+        external
+        nonReentrant
+        onlyRole(SUBMITTER_ROLE)
+        returns (bytes32 handoffHash)
+    {
+        require(shipmentId  != bytes32(0), "empty shipment id");
+        require(merkleRoot  != bytes32(0), "empty merkle root");
+        require(sender      != address(0), "invalid sender");
+        require(receiver    != address(0), "invalid receiver");
+        require(sender      != receiver,   "sender == receiver");
+        require(contestedBy == sender || contestedBy == receiver, "invalid contestedBy");
+        require(shipmentRegistry.exists(shipmentId), "shipment not found");
+        _requirePrevHandoff(shipmentId, prevHandoffHash);
+
+        bytes32 reasonHash = keccak256(bytes(reason));
+        bytes32 digest = _hashHandoff(
+            shipmentId,
+            merkleRoot,
+            prevHandoffHash,
+            sender,
+            receiver,
+            1,
+            reasonHash
+        );
+        address recovered = digest.recover(contestedSig);
+        require(recovered == contestedBy, "signature mismatch");
+
+        handoffHash = _buildHandoffHash(
+            shipmentId,
+            merkleRoot,
+            prevHandoffHash,
+            sender,
+            receiver,
+            true,
+            reasonHash
+        );
+        require(handoffRecords[handoffHash].recordedAt == 0, "handoff already recorded");
+
+        handoffRecords[handoffHash] = HandoffRecord({
+            shipmentId:  shipmentId,
+            merkleRoot:  merkleRoot,
+            prevHandoffHash: prevHandoffHash,
+            sender:      sender,
+            receiver:    receiver,
+            recordedAt:  uint64(block.timestamp),
+            contested:   true,
+            reasonHash:  reasonHash
+        });
+
+        emit HandoffContested(
+            shipmentId,
+            handoffHash,
+            contestedBy,
+            reason,
             uint64(block.timestamp)
         );
     }
@@ -207,6 +295,7 @@ contract DWHVerifier is AccessControl, ReentrancyGuard {
         require(authorized, "not authorized to contest");
 
         rec.contested = true;
+        rec.reasonHash = keccak256(bytes(reason));
 
         emit HandoffContested(
             shipmentId,
@@ -226,14 +315,67 @@ contract DWHVerifier is AccessControl, ReentrancyGuard {
     function _buildHandoffHash(
         bytes32 shipmentId,
         bytes32 merkleRoot,
-        bool    isContest
+        bytes32 prevHandoffHash,
+        address sender,
+        address receiver,
+        bool    isContest,
+        bytes32 reasonHash
+    )
+        internal
+        pure
+        returns (bytes32)
+    {
+        return keccak256(
+            abi.encodePacked(
+                shipmentId,
+                merkleRoot,
+                prevHandoffHash,
+                sender,
+                receiver,
+                isContest,
+                reasonHash
+            )
+        );
+    }
+
+    function _requirePrevHandoff(bytes32 shipmentId, bytes32 prevHandoffHash)
+        internal
+        view
+    {
+        bytes32 latest = latestHandoff[shipmentId];
+        if (latest == bytes32(0)) {
+            require(prevHandoffHash == bytes32(0), "prev handoff required");
+        } else {
+            require(prevHandoffHash == latest, "prev handoff mismatch");
+        }
+    }
+
+    function _hashHandoff(
+        bytes32 shipmentId,
+        bytes32 merkleRoot,
+        bytes32 prevHandoffHash,
+        address sender,
+        address receiver,
+        uint8   contested,
+        bytes32 reasonHash
     )
         internal
         view
         returns (bytes32)
     {
-        return keccak256(
-            abi.encodePacked(shipmentId, merkleRoot, block.timestamp, block.number, msg.sender, isContest)
+        return _hashTypedDataV4(
+            keccak256(
+                abi.encode(
+                    HANDOFF_TYPEHASH,
+                    shipmentId,
+                    merkleRoot,
+                    prevHandoffHash,
+                    sender,
+                    receiver,
+                    contested,
+                    reasonHash
+                )
+            )
         );
     }
 
@@ -247,7 +389,33 @@ contract DWHVerifier is AccessControl, ReentrancyGuard {
         view
         returns (bytes32)
     {
+        require(latestHandoff[shipmentId] != bytes32(0), "no handoff for shipment");
         return handoffRecords[latestHandoff[shipmentId]].merkleRoot;
+    }
+
+    /// @notice Returns the EIP-712 digest to sign for a handoff.
+    function handoffDigest(
+        bytes32 shipmentId,
+        bytes32 merkleRoot,
+        bytes32 prevHandoffHash,
+        address sender,
+        address receiver,
+        uint8   contested,
+        bytes32 reasonHash
+    )
+        external
+        view
+        returns (bytes32)
+    {
+        return _hashHandoff(
+            shipmentId,
+            merkleRoot,
+            prevHandoffHash,
+            sender,
+            receiver,
+            contested,
+            reasonHash
+        );
     }
 
     /// @notice Returns true if a handoff is in the contested state.

@@ -4,6 +4,15 @@ pragma solidity ^0.8.26;
 import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
+import "./IShipmentRegistry.sol";
+
+interface IFreshnessVerifier {
+    function verifyProof(bytes calldata proof, uint256[] calldata publicSignals)
+        external
+        view
+        returns (bool);
+}
+
 /// @title FreshnessScore — Dynamic Freshness Score Contract
 /// @notice Receives ZK-proven freshness statistics from the off-chain prover
 ///         service (Groth16 via SnarkJS / SP1 / RISC Zero zkVM) and applies
@@ -28,6 +37,9 @@ contract FreshnessScore is AccessControl, ReentrancyGuard {
     // ─────────────────────────────────────────────────────────────────────────
     bytes32 public constant PROVER_ROLE  = keccak256("PROVER_ROLE");
     bytes32 public constant ADMIN_ROLE   = keccak256("ADMIN_ROLE");
+
+    IShipmentRegistry public immutable shipmentRegistry;
+    IFreshnessVerifier public verifier;
 
     // ─────────────────────────────────────────────────────────────────────────
     // State
@@ -78,7 +90,11 @@ contract FreshnessScore is AccessControl, ReentrancyGuard {
     // ─────────────────────────────────────────────────────────────────────────
     // Constructor
     // ─────────────────────────────────────────────────────────────────────────
-    constructor() {
+    constructor(address registryAddress, address verifierAddress) {
+        require(registryAddress != address(0), "invalid registry");
+        require(verifierAddress != address(0), "invalid verifier");
+        shipmentRegistry = IShipmentRegistry(registryAddress);
+        verifier = IFreshnessVerifier(verifierAddress);
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
         _grantRole(ADMIN_ROLE, msg.sender);
         _grantRole(PROVER_ROLE, msg.sender);
@@ -92,6 +108,7 @@ contract FreshnessScore is AccessControl, ReentrancyGuard {
     ///         registered). Initial score is always 100 (perfectly fresh).
     /// @param  shipmentId  Unique shipment identifier.
     function initialize(bytes32 shipmentId) external onlyRole(PROVER_ROLE) {
+        require(shipmentRegistry.exists(shipmentId), "shipment not found");
         require(!records[shipmentId].initialized, "already initialized");
         records[shipmentId] = ScoreRecord({
             score:         100,
@@ -117,13 +134,15 @@ contract FreshnessScore is AccessControl, ReentrancyGuard {
     ///         companion `FreshnessVerifier` contract (SnarkJS-generated);
     ///         this function trusts the PROVER_ROLE caller to have pre-verified.
     ///
-    /// @param  shipmentId  Shipment to update.
-    /// @param  penalty     Score penalty calculated by the kinetic model (0-100).
-    /// @param  proofHash   keccak256 of the Groth16 proof bytes (audit trail).
+    /// @param  shipmentId    Shipment to update.
+    /// @param  newScore      New freshness score computed by the prover (0-100).
+    /// @param  proof         Groth16 proof bytes.
+    /// @param  publicSignals Public signals array containing [previousScore, newScore].
     function updateScoreWithProof(
         bytes32 shipmentId,
-        uint8   penalty,
-        bytes32 proofHash
+        uint8   newScore,
+        bytes   calldata proof,
+        uint256[] calldata publicSignals
     )
         external
         nonReentrant
@@ -131,10 +150,19 @@ contract FreshnessScore is AccessControl, ReentrancyGuard {
     {
         ScoreRecord storage rec = records[shipmentId];
         require(rec.initialized, "shipment not initialized");
-        require(proofHash != bytes32(0), "invalid proof hash");
+        require(publicSignals.length == 2, "invalid public signals");
 
         uint8 previous = rec.score;
-        uint8 newScore  = penalty >= previous ? 0 : previous - penalty;
+        require(publicSignals[0] == uint256(previous), "signal previous mismatch");
+        require(publicSignals[1] == uint256(newScore), "signal new mismatch");
+        require(newScore <= previous, "newScore > previous");
+        require(newScore <= 100, "newScore > 100");
+
+        bool ok = verifier.verifyProof(proof, publicSignals);
+        require(ok, "invalid proof");
+
+        uint8 penalty = previous - newScore;
+        bytes32 proofHash = keccak256(abi.encode(proof, publicSignals));
 
         rec.score         = newScore;
         rec.lastUpdatedAt = uint64(block.timestamp);
@@ -155,6 +183,15 @@ contract FreshnessScore is AccessControl, ReentrancyGuard {
         if (newScore <= CRITICAL_THRESHOLD && previous > CRITICAL_THRESHOLD) {
             emit FreshnessCritical(shipmentId, newScore, uint64(block.timestamp));
         }
+    }
+
+    /// @notice Update the verifier contract (admin only).
+    function setVerifier(address verifierAddress)
+        external
+        onlyRole(ADMIN_ROLE)
+    {
+        require(verifierAddress != address(0), "invalid verifier");
+        verifier = IFreshnessVerifier(verifierAddress);
     }
 
     // ─────────────────────────────────────────────────────────────────────────

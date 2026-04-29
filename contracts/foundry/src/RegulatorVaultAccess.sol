@@ -4,6 +4,8 @@ pragma solidity ^0.8.26;
 import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
+import "./IShipmentRegistry.sol";
+
 /// @title RegulatorVaultAccess
 /// @notice On-chain layer for regulatory vault access control.
 ///         Records access requests with SPHINCS+ document hashes, enforces a
@@ -13,6 +15,7 @@ import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 ///         (Rust service). This contract acts as the authoritative gate that
 ///         the off-chain vault checks before releasing key shares.
 contract RegulatorVaultAccess is AccessControl, ReentrancyGuard {
+        IShipmentRegistry public immutable shipmentRegistry;
     // ─────────────────────────────────────────────────────────────────────────
     // Roles
     // ─────────────────────────────────────────────────────────────────────────
@@ -79,8 +82,10 @@ contract RegulatorVaultAccess is AccessControl, ReentrancyGuard {
     // ─────────────────────────────────────────────────────────────────────────
     // Constructor
     // ─────────────────────────────────────────────────────────────────────────
-    constructor(uint8 _approvalThreshold) {
+    constructor(address registryAddress, uint8 _approvalThreshold) {
+        require(registryAddress != address(0), "invalid registry");
         require(_approvalThreshold > 0, "threshold must be > 0");
+        shipmentRegistry = IShipmentRegistry(registryAddress);
         approvalThreshold = _approvalThreshold;
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
         _grantRole(ADMIN_ROLE, msg.sender);
@@ -102,6 +107,7 @@ contract RegulatorVaultAccess is AccessControl, ReentrancyGuard {
     ) external nonReentrant returns (bytes32 requestId) {
         require(shipmentId    != bytes32(0), "invalid shipment id");
         require(sphincsPqHash != bytes32(0), "invalid hash");
+        require(shipmentRegistry.exists(shipmentId), "shipment not found");
 
         requestId = keccak256(
             abi.encodePacked(shipmentId, sphincsPqHash, msg.sender, block.timestamp)
