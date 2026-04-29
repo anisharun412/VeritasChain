@@ -1,0 +1,14 @@
+{
+  "name": "@veritaschain/contracts-hardhat",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "build": "hardhat build",
+    "test": "hardhat test"
+  },
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox-viem": "^5.0.4",
+    "hardhat": "^3.4.2"
+  }
+}
