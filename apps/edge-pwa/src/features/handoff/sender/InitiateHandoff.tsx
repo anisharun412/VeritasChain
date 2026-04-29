@@ -10,7 +10,7 @@ interface InitiateHandoffProps {
 }
 
 export const InitiateHandoff: React.FC<InitiateHandoffProps> = ({ shipment, onComplete }) => {
-  const { authState } = useAuth();
+  const { isAuthenticated } = useAuth();
   const [fieldNotes, setFieldNotes] = useState('');
   const [showSummary, setShowSummary] = useState(false);
   const { isAdvertising, error, startAdvertise, stopAdvertise } = useBLEAdvertiser();
@@ -32,7 +32,7 @@ export const InitiateHandoff: React.FC<InitiateHandoffProps> = ({ shipment, onCo
     setShowSummary(true);
   };
 
-  if (!authState.isAuthenticated) {
+  if (!isAuthenticated) {
     return (
       <div className="alert alert-error" style={{ margin: '1rem' }}>
         🔒 Not authenticated. Please log in first.

@@ -325,3 +325,93 @@ body {
 .timeline-dot { width: 0.75rem; height: 0.75rem; border-radius: 50%; background: var(--emerald); flex-shrink: 0; margin-top: 0.25rem; }
 .timeline-connector { width: 2px; background: var(--gray-200); flex: 1; margin: 0.25rem 0; }
 .timeline-content { flex: 1; padding-bottom: 1.25rem; }
+
+/* ─── RBAC: Role Tabs ───────────────────────────────────────── */
+.role-tab {
+  padding: 0.35rem 0.9rem; border-radius: var(--radius-full);
+  font-size: 0.8rem; font-weight: 500; cursor: pointer;
+  background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.15);
+  color: rgba(255,255,255,0.75); transition: all 0.15s;
+}
+.role-tab:hover { background: rgba(255,255,255,0.18); }
+.role-tab-active { background: var(--emerald) !important; border-color: var(--emerald) !important; color: white !important; }
+
+/* ─── RBAC: Identity Grid ───────────────────────────────────── */
+.identity-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1rem;
+}
+.identity-card {
+  position: relative; overflow: hidden;
+  background: rgba(255,255,255,0.07);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: var(--radius-lg);
+  padding: 1.25rem 1.25rem 1rem;
+  text-align: left; cursor: pointer;
+  transition: all 0.2s;
+}
+.identity-card:hover {
+  background: rgba(255,255,255,0.13);
+  border-color: rgba(255,255,255,0.25);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+}
+.identity-card:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+.identity-card-bar {
+  position: absolute; top: 0; left: 0; right: 0; height: 3px;
+}
+.identity-role-badge {
+  display: inline-block; font-size: 0.7rem; font-weight: 600;
+  border-radius: var(--radius-full); padding: 0.2rem 0.6rem;
+  margin-bottom: 0.6rem;
+}
+.identity-name { font-size: 1rem; font-weight: 700; color: #fff; margin-bottom: 0.15rem; }
+.identity-org { font-size: 0.8rem; color: rgba(255,255,255,0.55); margin-bottom: 0.5rem; }
+.identity-did { font-family: monospace; font-size: 0.7rem; color: rgba(255,255,255,0.35); margin-bottom: 0.6rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.identity-arrow { font-size: 0.8rem; font-weight: 600; color: var(--emerald); opacity: 0; transition: opacity 0.15s; }
+.identity-card:hover .identity-arrow { opacity: 1; }
+
+/* ─── RBAC: Dashboard Stats ─────────────────────────────────── */
+.dash-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+.dash-stat-card {
+  background: var(--white); border-radius: var(--radius-lg);
+  border: 1px solid; padding: 1.25rem;
+  box-shadow: var(--shadow-sm);
+}
+.dash-stat-value { font-size: 2rem; font-weight: 800; line-height: 1; }
+.dash-stat-label { font-size: 0.8rem; color: var(--gray-500); margin-top: 0.35rem; font-weight: 500; }
+
+/* ─── RBAC: Dashboard Row ───────────────────────────────────── */
+.dash-row {
+  padding: 1.1rem 1.25rem;
+  border-bottom: 1px solid var(--gray-100);
+  display: flex; align-items: flex-start;
+  justify-content: space-between; gap: 1rem;
+  cursor: pointer; transition: background 0.15s;
+}
+.dash-row:hover { background: var(--gray-50); }
+.dash-row:last-child { border-bottom: none; }
+
+/* ─── RBAC: Role Alert Boxes ────────────────────────────────── */
+.role-alert {
+  border-radius: var(--radius-lg); padding: 1.5rem;
+  display: flex; align-items: flex-start; gap: 1.5rem;
+  margin-bottom: 1.25rem; flex-wrap: wrap;
+  box-shadow: var(--shadow);
+}
+.role-alert-amber { background: linear-gradient(135deg, #92400e, #b45309); }
+.role-alert-emerald { background: linear-gradient(135deg, #065f46, #059669); }
+.role-alert-red { background: linear-gradient(135deg, #991b1b, #dc2626); }
+.role-alert-label {
+  font-size: 0.7rem; font-weight: 700; letter-spacing: 0.08em;
+  text-transform: uppercase; color: rgba(255,255,255,0.6); margin-bottom: 0.3rem;
+}
+.role-alert-title { font-size: 1.25rem; font-weight: 800; color: #fff; }
+.role-alert-sub { font-size: 0.85rem; color: rgba(255,255,255,0.7); margin-top: 0.2rem; }
+

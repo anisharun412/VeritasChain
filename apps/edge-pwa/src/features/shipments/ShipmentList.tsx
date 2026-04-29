@@ -6,13 +6,12 @@ import { useShipments } from './useShipments';
 import { useNavigate } from 'react-router-dom';
 
 export const ShipmentList: React.FC = () => {
-  const { authState } = useAuth();
+  const { isAuthenticated, userId } = useAuth();
   const navigate = useNavigate();
-  const userId = authState.user?.did || '';
-  const { shipments, loading, error } = useShipments(userId);
+  const { shipments, loading, error } = useShipments(userId || '');
   const [selectedShipment, setSelectedShipment] = useState<Shipment | null>(null);
 
-  if (!authState.isAuthenticated) {
+  if (!isAuthenticated) {
     return (
       <div className="empty-state">
         <div className="empty-icon">🔒</div>
