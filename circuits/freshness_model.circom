@@ -1,5 +1,3 @@
-pragma circom 2.1.0;
-
 // Placeholder circuit: replace with a proven spoilage model.
 template FreshnessModel() {
   signal input previousScore;

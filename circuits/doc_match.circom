@@ -1,5 +1,3 @@
-pragma circom 2.1.0;
-
 // Placeholder circuit: enforces equality between hashes.
 template DocMatch() {
   signal input docHash;
