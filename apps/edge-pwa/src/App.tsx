@@ -6,6 +6,7 @@ import LoginPage from './features/auth/LoginPage';
 import RoleBasedDashboard from './features/auth/RoleBasedDashboard';
 import { InitiateHandoff } from './features/handoff/sender/InitiateHandoff';
 import { AcceptHandoff } from './features/handoff/receiver/AcceptHandoff';
+import TrackingPage from './features/tracking/TrackingPage';
 import { UserRole } from './features/auth/roles';
 import './index.css';
 
@@ -86,6 +87,16 @@ export default function App() {
             element={
               <ProtectedRoute allowedRoles={[UserRole.CARRIER, UserRole.RECEIVER]}>
                 <AcceptHandoffPage />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* Tracking Map (All Roles) */}
+          <Route
+            path="/tracking"
+            element={
+              <ProtectedRoute>
+                <TrackingPage />
               </ProtectedRoute>
             }
           />

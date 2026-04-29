@@ -34,6 +34,17 @@ export default function DashboardShell({
         </div>
 
         <div className="header-actions">
+          <button
+            onClick={() => navigate('/tracking')}
+            style={{
+              background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)',
+              color: '#fff', borderRadius: '0.4rem', padding: '0.4rem 0.85rem',
+              cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600,
+              display: 'flex', alignItems: 'center', gap: '0.4rem',
+            }}
+          >
+            🌍 Live Map
+          </button>
           <WalletConnect />
           {actions && <div>{actions}</div>}
           <button className="logout-btn" onClick={logout}>Sign out</button>
