@@ -1,5 +1,12 @@
 {
   "name": "@veritaschain/types",
   "private": true,
-  "version": "0.1.0"
+  "version": "0.1.0",
+  "type": "module",
+  "main": "./src/physicalLayer.ts",
+  "types": "./src/physicalLayer.ts",
+  "exports": {
+    ".": "./src/physicalLayer.ts",
+    "./physicalLayer": "./src/physicalLayer.ts"
+  }
 }

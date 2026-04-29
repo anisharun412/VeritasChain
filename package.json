@@ -6,10 +6,10 @@
     "node": ">=20"
   },
   "scripts": {
-    "lint": "pnpm -r run lint --if-present",
-    "test": "pnpm -r run test --if-present",
-    "build": "pnpm -r run build --if-present",
-    "dev": "pnpm -r run dev --if-present",
-    "typecheck": "pnpm -r run typecheck --if-present"
+    "lint": "pnpm -r --if-present run lint",
+    "test": "pnpm -r --if-present run test",
+    "build": "pnpm -r --if-present run build",
+    "dev": "pnpm -r --if-present run dev",
+    "typecheck": "pnpm -r --if-present run typecheck"
   }
 }

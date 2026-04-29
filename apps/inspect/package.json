@@ -10,6 +10,9 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@veritaschain/crypto": "file:../../packages/crypto",
+    "@veritaschain/shared": "file:../../packages/shared",
+    "@veritaschain/types": "file:../../packages/types",
     "react": "^19.2.5",
     "react-dom": "^19.2.5"
   },

@@ -9,7 +9,10 @@ const buildDir = join(__dirname, "..", "build");
 mkdirSync(buildDir, { recursive: true });
 
 for (const name of circuits) {
-  const cmd = `.\\circom.exe ${name}.circom -l node_modules --r1cs --wasm --sym -o ${buildDir}`;
+  
+const cmd = `circom ${name}.circom -l node_modules --r1cs --wasm --sym -o 
+${buildDir}`;
+  
   execSync(cmd, { stdio: "inherit", cwd: join(__dirname, "..") });
 }
 
