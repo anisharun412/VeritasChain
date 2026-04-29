@@ -22,7 +22,7 @@ export default function Navbar() {
       <div className="vc-nav-inner">
         {/* Logo */}
         <button
-          onClick={() => { resetFlow(); navigate('/verify'); }}
+          onClick={() => { resetFlow(); navigate('/physical/verify'); }}
           className="flex items-center gap-2.5 flex-shrink-0"
           aria-label="VeritasChain home"
         >
@@ -36,11 +36,11 @@ export default function Navbar() {
 
         {/* Desktop nav links */}
         <nav className="hidden md:flex items-center gap-1 flex-1 justify-center" aria-label="Primary navigation">
-          <NavLink to="/" end className={linkClass}>Home</NavLink>
-          <NavLink to="/verify" className={linkClass} onClick={resetFlow}>Verify</NavLink>
-          <NavLink to="/history" className={linkClass}>History</NavLink>
-          <NavLink to="/docs" className={linkClass}>Documentation</NavLink>
-          <NavLink to="/about" className={linkClass}>About</NavLink>
+          <NavLink to="/physical" end className={linkClass}>Home</NavLink>
+          <NavLink to="/physical/verify" className={linkClass} onClick={resetFlow}>Verify</NavLink>
+          <NavLink to="/physical/history" className={linkClass}>History</NavLink>
+          <NavLink to="/physical/docs" className={linkClass}>Documentation</NavLink>
+          <NavLink to="/physical/about" className={linkClass}>About</NavLink>
         </nav>
 
         {/* Right CTA */}
@@ -48,7 +48,7 @@ export default function Navbar() {
           <button 
             className="vc-btn vc-btn-primary" 
             style={{ height: 36, padding: '0 16px', fontSize: 13 }}
-            onClick={() => { resetFlow(); navigate('/verify'); }}
+            onClick={() => { resetFlow(); navigate('/physical/verify'); }}
           >
             Start Verification →
           </button>
@@ -72,7 +72,7 @@ export default function Navbar() {
       {/* Mobile menu */}
       {mobileOpen && (
         <div className="md:hidden border-t border-gray-100 bg-white px-4 py-3 space-y-1">
-          {[['/', 'Home'], ['/verify', 'Verify'], ['/history', 'History'], ['/docs', 'Documentation'], ['/about', 'About']].map(([to, label]) => (
+          {[['/physical', 'Home'], ['/physical/verify', 'Verify'], ['/physical/history', 'History'], ['/physical/docs', 'Documentation'], ['/physical/about', 'About']].map(([to, label]) => (
             <NavLink
               key={to}
               to={to}
@@ -80,7 +80,7 @@ export default function Navbar() {
                 `block px-3 py-2 rounded-lg text-sm font-medium transition-colors ${isActive ? 'bg-blue-50 text-blue-600' : 'text-gray-600 hover:bg-gray-50'}`
               }
               onClick={() => {
-                if (to === '/verify') resetFlow();
+                if (to === '/physical/verify') resetFlow();
                 setMobileOpen(false);
               }}
             >
@@ -92,7 +92,7 @@ export default function Navbar() {
             onClick={() => {
               resetFlow();
               setMobileOpen(false);
-              navigate('/verify');
+              navigate('/physical/verify');
             }}
           >
             Start Verification →

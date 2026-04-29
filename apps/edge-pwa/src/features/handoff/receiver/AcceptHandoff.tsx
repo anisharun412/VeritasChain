@@ -1,8 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Shipment } from '@veritaschain/types';
 import { useNFCReader } from './useNFCReader';
+import { useBLEReceiver } from './useBLEReceiver';
 import { NFCTapPrompt } from './NFCTapPrompt';
 import { SealVerification } from './SealVerification';
+import { ChainSubmit } from '../../blockchain/ChainSubmit';
 
 interface AcceptHandoffProps {
   shipment: Shipment;
@@ -10,19 +12,39 @@ interface AcceptHandoffProps {
 }
 
 export const AcceptHandoff: React.FC<AcceptHandoffProps> = ({ shipment, onComplete }) => {
-  const { isScanning, nfcData, error, scan, stop } = useNFCReader();
+  const { isScanning: isNFCScanning, nfcData, error: nfcError, scan: scanNFC, stop: stopNFC } = useNFCReader();
+  const { isScanning: isBLEScanning, error: bleError, receivedBundle, startScan: startBLEScan, stopScan: stopBLEScan } = useBLEReceiver();
+  
   const [verifiedSeal, setVerifiedSeal] = useState(false);
   const [showNFCPrompt, setShowNFCPrompt] = useState(false);
   const [contested, setContested] = useState(false);
   const [contestReason, setContestReason] = useState('');
+  const [simulatedMode, setSimulatedMode] = useState(false);
 
-  const handleScan = async () => {
+  // Auto-verify if BLE bundle received
+  useEffect(() => {
+    if (receivedBundle && receivedBundle.shipmentId === shipment.id) {
+      setVerifiedSeal(true);
+      setShowNFCPrompt(false);
+    }
+  }, [receivedBundle, shipment.id]);
+
+  const handleNFCScan = async () => {
     setShowNFCPrompt(true);
-    await scan();
+    await scanNFC();
+  };
+
+  const handleBLEScan = async () => {
+    await startBLEScan();
+  };
+
+  const handleSimulate = () => {
+    setSimulatedMode(true);
+    setVerifiedSeal(true);
   };
 
   const verifySeal = () => {
-    if (nfcData) setVerifiedSeal(true);
+    if (nfcData || simulatedMode) setVerifiedSeal(true);
   };
 
   const handleContest = () => {
@@ -30,6 +52,8 @@ export const AcceptHandoff: React.FC<AcceptHandoffProps> = ({ shipment, onComple
     alert(`Handoff contested: "${contestReason}"\n\nContested bundle would be submitted to chain.`);
     onComplete?.();
   };
+
+  const displayError = nfcError || bleError;
 
   return (
     <div className="handoff-page">
@@ -49,21 +73,53 @@ export const AcceptHandoff: React.FC<AcceptHandoffProps> = ({ shipment, onComple
             <input className="form-input" value={`${shipment.origin} → ${shipment.destination}`} disabled />
           </div>
 
-          {/* Step 1: Seal verification */}
+          {/* Step 1: Physical Handshake verification */}
           <div className="border-top">
             <div className="handoff-step">
               <div className={`handoff-step-num ${verifiedSeal ? 'done' : ''}`}>1</div>
-              <div className="handoff-step-text">Verify NFC Seal</div>
+              <div className="handoff-step-text">Verify Physical Handshake</div>
             </div>
 
-            {!nfcData ? (
-              <button className="btn btn-primary btn-full" onClick={handleScan}>
-                📱 Tap to Scan NFC Seal
-              </button>
+            {!verifiedSeal ? (
+              <div className="flex flex-col gap-3">
+                <button className="btn btn-primary btn-full" onClick={handleNFCScan}>
+                  📱 Tap to Scan NFC Seal
+                </button>
+                <button 
+                  className="btn btn-outline btn-full" 
+                  onClick={handleBLEScan}
+                  disabled={isBLEScanning}
+                  style={{ background: 'rgba(59, 130, 246, 0.1)', borderColor: 'var(--blue)' }}
+                >
+                  {isBLEScanning ? <><span className="spinner"/> Listening for Sender BLE...</> : '📡 Listen for BLE Handoff'}
+                </button>
+                
+                {/* Hackathon Demo Button */}
+                <div style={{ marginTop: '0.5rem', textAlign: 'center' }}>
+                  <button onClick={handleSimulate} style={{
+                    background: 'transparent', border: '1px dashed var(--gray-400)',
+                    color: 'var(--gray-500)', fontSize: '0.75rem', padding: '0.4rem 1rem',
+                    borderRadius: '4px', cursor: 'pointer'
+                  }}>
+                    🧪 Simulate Physical Connection (Demo Mode)
+                  </button>
+                </div>
+              </div>
             ) : (
               <>
-                <SealVerification nfcData={nfcData} isValid={verifiedSeal} />
-                {!verifiedSeal && (
+                {(nfcData || simulatedMode || receivedBundle) && (
+                  <div className="seal-valid mb-3">
+                    <span className="seal-icon">✅</span>
+                    <div>
+                      <div className="font-semibold" style={{ color: '#065f46' }}>Handshake Verified</div>
+                      <div className="text-xs text-gray" style={{ marginTop: '0.2rem' }}>
+                        Method: {simulatedMode ? 'Demo Simulation' : receivedBundle ? 'BLE P2P Protocol' : 'NFC Hardware Seal'}
+                      </div>
+                    </div>
+                  </div>
+                )}
+                
+                {!nfcData && !simulatedMode && !receivedBundle && (
                   <button
                     className="btn btn-success btn-full"
                     style={{ marginTop: '0.75rem' }}
@@ -113,7 +169,10 @@ export const AcceptHandoff: React.FC<AcceptHandoffProps> = ({ shipment, onComple
                   </button>
                   <button
                     className="btn btn-success btn-full"
-                    onClick={onComplete}
+                    onClick={() => {
+                      alert('Handoff completed successfully!');
+                      onComplete?.();
+                    }}
                   >
                     ✍ Accept & Co-Sign
                   </button>
@@ -149,15 +208,35 @@ export const AcceptHandoff: React.FC<AcceptHandoffProps> = ({ shipment, onComple
             </div>
           )}
 
-          {error && <div className="alert alert-error">{error}</div>}
+          {displayError && <div className="alert alert-error">{displayError}</div>}
         </div>
       </div>
 
       {showNFCPrompt && (
         <NFCTapPrompt
-          isScanning={isScanning}
-          onCancel={() => { setShowNFCPrompt(false); stop(); }}
+          isScanning={isNFCScanning}
+          onCancel={() => { setShowNFCPrompt(false); stopNFC(); }}
         />
+      )}
+      
+      {verifiedSeal && !contested && (
+        <div style={{ marginTop: '1.5rem' }}>
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.75rem',
+          }}>
+            <div style={{ flex: 1, height: '1px', background: 'var(--gray-200)' }} />
+            <span style={{ fontSize: '0.75rem', color: 'var(--gray-500)', whiteSpace: 'nowrap', fontWeight: 600 }}>
+              ⛓ BLOCKCHAIN CO-SIGNATURE
+            </span>
+            <div style={{ flex: 1, height: '1px', background: 'var(--gray-200)' }} />
+          </div>
+          <ChainSubmit
+            shipmentId={shipment.id}
+            merkleRoot={'0xMockRoot'}
+            zkProofHash={'zk-proof-' + shipment.id}
+            mode="receive"
+          />
+        </div>
       )}
     </div>
   );

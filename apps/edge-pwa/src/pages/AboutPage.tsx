@@ -4,7 +4,7 @@ export default function AboutPage() {
   return (
     <div style={{ padding: '48px 0 80px' }}>
       <div className="vc-container">
-        <Breadcrumb items={[{ label: 'Home', to: '/verify' }, { label: 'About Process' }]} />
+        <Breadcrumb items={[{ label: 'Home', to: '/physical' }, { label: 'About Process' }]} />
 
         {/* Mission / Context */}
         <div style={{ maxWidth: 720, marginBottom: 80 }}>

@@ -15,10 +15,10 @@ export default function LandingPage() {
             Cryptographically secure custody handoffs using ZK proofs, NFC hardware seals, and immutable audit trails.
           </p>
           <div style={{ display: 'flex', gap: 16, justifyContent: 'center' }}>
-            <button className="vc-btn vc-btn-primary vc-btn-lg" onClick={() => navigate('/verify')}>
+            <button className="vc-btn vc-btn-primary vc-btn-lg" onClick={() => navigate('/physical/verify')}>
               Start Verification →
             </button>
-            <button className="vc-btn vc-btn-outline vc-btn-lg" onClick={() => navigate('/docs')}>
+            <button className="vc-btn vc-btn-outline vc-btn-lg" onClick={() => navigate('/physical/docs')}>
               View Documentation
             </button>
           </div>

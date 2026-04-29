@@ -46,6 +46,9 @@ export function useShipmentTracking(userRole: UserRole | null, shipmentId?: stri
           if (shipmentId) socket.emit('subscribe', { shipmentId });
           else socket.emit('subscribe:all');
         });
+        socket.on('location_update', (data: LiveShipment[]) => {
+          setShipments(data);
+        });
         socket.on('connect_error', () => {
           socket.disconnect();
           startMockSimulation();

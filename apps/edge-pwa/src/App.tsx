@@ -8,6 +8,15 @@ import { InitiateHandoff } from './features/handoff/sender/InitiateHandoff';
 import { AcceptHandoff } from './features/handoff/receiver/AcceptHandoff';
 import TrackingPage from './features/tracking/TrackingPage';
 import { UserRole } from './features/auth/roles';
+
+// Physical Layer Pages
+import PhysicalLayout from './layouts/PhysicalLayout';
+import LandingPage from './pages/LandingPage';
+import VerifyPage from './pages/VerifyPage';
+import HistoryPage from './pages/HistoryPage';
+import DocumentationPage from './pages/DocumentationPage';
+import AboutPage from './pages/AboutPage';
+
 import './index.css';
 
 // Mock shipment used by handoff routes (replace with real fetch later)
@@ -100,6 +109,15 @@ export default function App() {
               </ProtectedRoute>
             }
           />
+
+          {/* Physical Layer Dashboard (Public / Unauthenticated Demo) */}
+          <Route path="/physical" element={<PhysicalLayout />}>
+            <Route index element={<LandingPage />} />
+            <Route path="verify" element={<VerifyPage />} />
+            <Route path="history" element={<HistoryPage />} />
+            <Route path="docs" element={<DocumentationPage />} />
+            <Route path="about" element={<AboutPage />} />
+          </Route>
 
           {/* Old /manufacturer, /carrier, /receiver, /regulator paths → dashboard */}
           <Route path="/manufacturer" element={<Navigate to="/dashboard" replace />} />

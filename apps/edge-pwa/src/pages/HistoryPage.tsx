@@ -147,7 +147,7 @@ export default function HistoryPage() {
   return (
     <div className="vc-section">
       <div className="vc-container">
-        <Breadcrumb items={[{ label: 'Home', to: '/' }, { label: 'History' }]} />
+        <Breadcrumb items={[{ label: 'Home', to: '/physical' }, { label: 'History' }]} />
 
         {/* Header */}
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 32, flexWrap: 'wrap', gap: 16 }}>

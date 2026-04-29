@@ -33,7 +33,7 @@ export default function DocumentationPage() {
   return (
     <div style={{ padding: '48px 0 80px' }}>
       <div className="vc-container">
-        <Breadcrumb items={[{ label: 'Home', to: '/' }, { label: 'Documentation' }]} />
+        <Breadcrumb items={[{ label: 'Home', to: '/physical' }, { label: 'Documentation' }]} />
 
         <div style={{ display: 'grid', gridTemplateColumns: '220px 1fr', gap: 48, alignItems: 'start' }}>
           {/* Sidebar */}

@@ -397,7 +397,7 @@ function Step4({ onComplete }: { onComplete: (b: HandoffBundle) => void }) {
     return (
       <div style={{ textAlign: 'center', padding: '40px 0' }}>
         <h3 className="vc-h3" style={{ marginBottom: 12 }}>No handoff data found</h3>
-        <button className="vc-btn vc-btn-primary" onClick={() => navigate('/')}>Go Home</button>
+        <button className="vc-btn vc-btn-primary" onClick={() => navigate('/physical')}>Go Home</button>
       </div>
     );
   }
@@ -438,8 +438,8 @@ function Step4({ onComplete }: { onComplete: (b: HandoffBundle) => void }) {
         </div>
         <HandoffSummaryCard bundle={bundle} />
         <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
-          <button className="vc-btn vc-btn-primary vc-btn-lg" onClick={() => navigate('/')}>+ New Verification</button>
-          <button className="vc-btn vc-btn-outline vc-btn-lg" onClick={() => navigate('/history')}>View History</button>
+          <button className="vc-btn vc-btn-primary vc-btn-lg" onClick={() => navigate('/physical')}>+ New Verification</button>
+          <button className="vc-btn vc-btn-outline vc-btn-lg" onClick={() => navigate('/physical/history')}>View History</button>
         </div>
       </div>
     );
@@ -481,7 +481,7 @@ function Step4({ onComplete }: { onComplete: (b: HandoffBundle) => void }) {
 
       <div style={{ display: 'flex', gap: 12 }}>
         <button className="vc-btn vc-btn-success vc-btn-lg" onClick={sign}>✍️ Sign &amp; Complete Handoff</button>
-        <button className="vc-btn vc-btn-ghost vc-btn-lg" onClick={() => navigate('/')}>Cancel</button>
+        <button className="vc-btn vc-btn-ghost vc-btn-lg" onClick={() => navigate('/physical')}>Cancel</button>
       </div>
     </div>
   );
@@ -507,7 +507,7 @@ export default function VerifyPage() {
     return (
       <div className="vc-section">
         <div className="vc-container" style={{ maxWidth: 600, margin: '0 auto' }}>
-          <Breadcrumb items={[{ label: 'Home', to: '/' }, { label: 'Verify' }]} />
+          <Breadcrumb items={[{ label: 'Home', to: '/physical' }, { label: 'Verify' }]} />
           <h1 className="vc-h2" style={{ marginBottom: 8 }}>Start Verification</h1>
           <p className="vc-body" style={{ marginBottom: 32 }}>Enter the shipment ID from the package label to begin the handoff verification process.</p>
 
@@ -548,7 +548,7 @@ export default function VerifyPage() {
   return (
     <div className="vc-section">
       <div className="vc-container">
-        <Breadcrumb items={[{ label: 'Home', to: '/' }, { label: 'Verify', to: '/verify' }, { label: state.shipmentId }]} />
+        <Breadcrumb items={[{ label: 'Home', to: '/physical' }, { label: 'Verify', to: '/physical/verify' }, { label: state.shipmentId }]} />
 
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 32, flexWrap: 'wrap', gap: 12 }}>
           <h1 className="vc-h2">Verifying Shipment</h1>
