@@ -9,6 +9,16 @@ import "../src/RegulatorVaultAccess.sol";
 import "../src/PostHashAnchors.sol";
 import "../src/ShipmentRegistry.sol";
 
+contract MockFreshnessVerifier is IFreshnessVerifier {
+    function verifyProof(bytes calldata, uint256[] calldata)
+        external
+        pure
+        returns (bool)
+    {
+        return true;
+    }
+}
+
 /// @notice Full Foundry test suite for the VeritasChain on-chain layer.
 ///         Covers: DWHVerifier, FreshnessScore, InteroperabilityAnchor,
 ///                 RegulatorVaultAccess, PostHashAnchors, ShipmentRegistry.
@@ -22,6 +32,7 @@ contract VeritasChainTest is Test {
     RegulatorVaultAccess   public vault;
     PostHashAnchors        public postHash;
     ShipmentRegistry       public registry;
+    MockFreshnessVerifier  public mockVerifier;
 
     // ─────────────────────────────────────────────────────────────────────────
     // Test actors
@@ -40,6 +51,7 @@ contract VeritasChainTest is Test {
     bytes32 internal shipmentId  = keccak256("shipment-001");
     bytes32 internal merkleRoot  = keccak256("merkle-root-001");
     bytes32 internal sphincsHash = keccak256("sphincs-hash-001");
+    bytes32 internal poseidonHash = keccak256("poseidon-hash-001");
     bytes32 internal nfcFingerp  = keccak256("nfc-pubkey-001");
     bytes   internal registrarDid = bytes("did:key:z6MkrBb9Zy");
 
@@ -50,12 +62,13 @@ contract VeritasChainTest is Test {
         sender   = vm.addr(senderKey);
         receiver = vm.addr(receiverKey);
 
-        dwh       = new DWHVerifier();
-        freshness = new FreshnessScore();
-        anchor    = new InteroperabilityAnchor();
-        vault     = new RegulatorVaultAccess(2); // threshold = 2
-        postHash  = new PostHashAnchors();
         registry  = new ShipmentRegistry();
+        mockVerifier = new MockFreshnessVerifier();
+        dwh       = new DWHVerifier(address(registry));
+        freshness = new FreshnessScore(address(registry), address(mockVerifier));
+        anchor    = new InteroperabilityAnchor(address(dwh));
+        vault     = new RegulatorVaultAccess(address(registry), 2); // threshold = 2
+        postHash  = new PostHashAnchors(address(registry));
 
         // Grant roles
         bytes32 SUBMITTER    = keccak256("SUBMITTER_ROLE");
@@ -91,49 +104,94 @@ contract VeritasChainTest is Test {
     // ── DWHVerifier ──────────────────────────────────────────────────────────
     // ─────────────────────────────────────────────────────────────────────────
 
-    function _signRoot(uint256 key, bytes32 root)
+    function _registerShipment() internal returns (bytes32) {
+        shipmentId = registry.registerShipment(sphincsHash, registrarDid, nfcFingerp);
+        return shipmentId;
+    }
+
+    function _signHandoff(
+        uint256 key,
+        bytes32 root,
+        bytes32 prev,
+        uint8 contested,
+        bytes32 reasonHash
+    )
         internal
-        pure
+        view
         returns (bytes memory sig)
     {
-        bytes32 ethHash = keccak256(
-            abi.encodePacked("\x19Ethereum Signed Message:\n32", root)
+        bytes32 digest = dwh.handoffDigest(
+            shipmentId,
+            root,
+            prev,
+            sender,
+            receiver,
+            contested,
+            reasonHash
         );
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(key, ethHash);
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(key, digest);
         sig = abi.encodePacked(r, s, v);
     }
 
+    function _recordValidHandoff(bytes32 root, bytes32 prev)
+        internal
+        returns (bytes32)
+    {
+        bytes memory sSig = _signHandoff(senderKey, root, prev, 0, bytes32(0));
+        bytes memory rSig = _signHandoff(receiverKey, root, prev, 0, bytes32(0));
+        return dwh.recordHandoff(shipmentId, root, prev, sender, receiver, sSig, rSig);
+    }
+
     function test_RecordHandoff_ValidDualSig() public {
-        bytes memory sSig = _signRoot(senderKey,   merkleRoot);
-        bytes memory rSig = _signRoot(receiverKey, merkleRoot);
+        _registerShipment();
+        bytes32 prev = bytes32(0);
+        bytes memory sSig = _signHandoff(senderKey,   merkleRoot, prev, 0, bytes32(0));
+        bytes memory rSig = _signHandoff(receiverKey, merkleRoot, prev, 0, bytes32(0));
 
         bytes32 handoffHash = dwh.recordHandoff(
-            shipmentId, merkleRoot, sender, receiver, sSig, rSig
+            shipmentId, merkleRoot, prev, sender, receiver, sSig, rSig
         );
 
         assertFalse(dwh.isContested(handoffHash));
         assertEq(dwh.latestMerkleRoot(shipmentId), merkleRoot);
     }
 
-    function test_RecordHandoff_WrongSig_ContestsHandoff() public {
+    function test_RecordHandoff_WrongSig_Reverts() public {
+        _registerShipment();
+        bytes32 prev = bytes32(0);
         // receiver signs with sender key — mismatch
-        bytes memory sSig = _signRoot(senderKey,   merkleRoot);
-        bytes memory rSig = _signRoot(senderKey,   merkleRoot); // wrong!
+        bytes memory sSig = _signHandoff(senderKey, merkleRoot, prev, 0, bytes32(0));
+        bytes memory rSig = _signHandoff(senderKey, merkleRoot, prev, 0, bytes32(0)); // wrong!
 
-        bytes32 handoffHash = dwh.recordHandoff(
-            shipmentId, merkleRoot, sender, receiver, sSig, rSig
+        vm.expectRevert("signature mismatch");
+        dwh.recordHandoff(
+            shipmentId, merkleRoot, prev, sender, receiver, sSig, rSig
+        );
+    }
+
+    function test_RecordContestedHandoff_ByReceiver() public {
+        _registerShipment();
+        bytes32 prev = bytes32(0);
+        bytes32 reasonHash = keccak256(bytes("seal breach detected"));
+        bytes memory rSig = _signHandoff(receiverKey, merkleRoot, prev, 1, reasonHash);
+
+        bytes32 handoffHash = dwh.recordContestedHandoff(
+            shipmentId,
+            merkleRoot,
+            prev,
+            sender,
+            receiver,
+            receiver,
+            "seal breach detected",
+            rSig
         );
 
         assertTrue(dwh.isContested(handoffHash));
     }
 
     function test_ContestHandoff_ByReceiver() public {
-        bytes memory sSig = _signRoot(senderKey,   merkleRoot);
-        bytes memory rSig = _signRoot(receiverKey, merkleRoot);
-
-        bytes32 handoffHash = dwh.recordHandoff(
-            shipmentId, merkleRoot, sender, receiver, sSig, rSig
-        );
+        _registerShipment();
+        bytes32 handoffHash = _recordValidHandoff(merkleRoot, bytes32(0));
 
         vm.prank(receiver);
         dwh.contestHandoff(shipmentId, handoffHash, "seal breach detected");
@@ -145,35 +203,48 @@ contract VeritasChainTest is Test {
     // ─────────────────────────────────────────────────────────────────────────
 
     function test_Initialize_Score100() public {
+        _registerShipment();
         freshness.initialize(shipmentId);
         assertEq(freshness.getScore(shipmentId), 100);
     }
 
     function test_UpdateScoreWithProof_AppliesPenalty() public {
+        _registerShipment();
         freshness.initialize(shipmentId);
-        bytes32 proofHash = keccak256("groth16-proof-001");
+        bytes memory proof = hex"01";
+        uint256[] memory signals = new uint256[](2);
+        signals[0] = 85;
+        signals[1] = 100;
 
-        freshness.updateScoreWithProof(shipmentId, 15, proofHash);
+        freshness.updateScoreWithProof(shipmentId, 85, proof, signals);
         assertEq(freshness.getScore(shipmentId), 85);
     }
 
     function test_UpdateScoreWithProof_ClampToZero() public {
+        _registerShipment();
         freshness.initialize(shipmentId);
-        bytes32 proofHash = keccak256("groth16-proof-002");
+        bytes memory proof = hex"02";
+        uint256[] memory signals = new uint256[](2);
+        signals[0] = 0;
+        signals[1] = 100;
 
-        freshness.updateScoreWithProof(shipmentId, 100, proofHash);
+        freshness.updateScoreWithProof(shipmentId, 0, proof, signals);
         assertEq(freshness.getScore(shipmentId), 0);
     }
 
     function test_FreshnessCritical_EventEmitted() public {
+        _registerShipment();
         freshness.initialize(shipmentId);
-        bytes32 proofHash = keccak256("groth16-proof-003");
+        bytes memory proof = hex"03";
+        uint256[] memory signals = new uint256[](2);
+        signals[0] = 25;
+        signals[1] = 100;
 
         // Penalty 75: score goes 100 → 25, crossing the CRITICAL_THRESHOLD of 30.
         vm.expectEmit(true, false, false, false);
         emit FreshnessScore.FreshnessCritical(shipmentId, 25, 0);
 
-        freshness.updateScoreWithProof(shipmentId, 75, proofHash);
+        freshness.updateScoreWithProof(shipmentId, 25, proof, signals);
         assertTrue(freshness.isCritical(shipmentId));
     }
 
@@ -182,6 +253,7 @@ contract VeritasChainTest is Test {
     // ─────────────────────────────────────────────────────────────────────────
 
     function test_RequestAccess_EmitsEvent() public {
+        _registerShipment();
         vm.expectEmit(false, true, false, false);
         emit RegulatorVaultAccess.AccessRequested(
             bytes32(0), shipmentId, sphincsHash, address(this), 0
@@ -190,6 +262,7 @@ contract VeritasChainTest is Test {
     }
 
     function test_ApproveAccess_TriggersAtThreshold() public {
+        _registerShipment();
         bytes32 requestId = vault.requestAccess(shipmentId, sphincsHash);
 
         vm.prank(regulator1);
@@ -202,6 +275,7 @@ contract VeritasChainTest is Test {
     }
 
     function test_DoubleApprove_Reverts() public {
+        _registerShipment();
         bytes32 requestId = vault.requestAccess(shipmentId, sphincsHash);
 
         vm.prank(regulator1);
@@ -213,6 +287,7 @@ contract VeritasChainTest is Test {
     }
 
     function test_ApproveAfterTrigger_Reverts() public {
+        _registerShipment();
         bytes32 requestId = vault.requestAccess(shipmentId, sphincsHash);
 
         vm.prank(regulator1); vault.approveAccess(requestId);
@@ -229,6 +304,8 @@ contract VeritasChainTest is Test {
     // ─────────────────────────────────────────────────────────────────────────
 
     function test_RecordAnchor_ExportsRoot() public {
+        _registerShipment();
+        _recordValidHandoff(merkleRoot, bytes32(0));
         bytes32 anchorId = anchor.recordAnchor(
             shipmentId,
             merkleRoot,
@@ -242,6 +319,8 @@ contract VeritasChainTest is Test {
     }
 
     function test_VerifyExternalAnchor_MatchingRoot() public {
+        _registerShipment();
+        _recordValidHandoff(merkleRoot, bytes32(0));
         bytes32 anchorId = anchor.recordAnchor(
             shipmentId,
             merkleRoot,
@@ -256,6 +335,8 @@ contract VeritasChainTest is Test {
     }
 
     function test_VerifyExternalAnchor_WrongRoot_ReturnsFalse() public {
+        _registerShipment();
+        _recordValidHandoff(merkleRoot, bytes32(0));
         bytes32 anchorId = anchor.recordAnchor(
             shipmentId,
             merkleRoot,
@@ -273,10 +354,12 @@ contract VeritasChainTest is Test {
     // ─────────────────────────────────────────────────────────────────────────
 
     function test_AnchorHash_AndVerify() public {
+        _registerShipment();
         bytes memory cid = bytes("bafkreig...");
         bytes32 anchorId = postHash.anchorHash(
             shipmentId,
             sphincsHash,
+            poseidonHash,
             cid,
             PostHashAnchors.DocumentType.BIRTH_CERTIFICATE,
             0
@@ -288,9 +371,10 @@ contract VeritasChainTest is Test {
     }
 
     function test_RevokeAnchor_VerifyReturnsFalse() public {
+        _registerShipment();
         bytes memory cid = bytes("bafkreig...");
         bytes32 anchorId = postHash.anchorHash(
-            shipmentId, sphincsHash, cid,
+            shipmentId, sphincsHash, poseidonHash, cid,
             PostHashAnchors.DocumentType.HANDOFF_BUNDLE, 1
         );
 
@@ -307,7 +391,7 @@ contract VeritasChainTest is Test {
 
     function test_FullHappyPath() public {
         // 1. Register shipment
-        bytes32 sid = registry.registerShipment(sphincsHash, registrarDid, nfcFingerp);
+        bytes32 sid = _registerShipment();
         assertTrue(registry.exists(sid));
 
         // 2. Initialise freshness
@@ -316,7 +400,7 @@ contract VeritasChainTest is Test {
 
         // 3. Anchor birth-certificate document hash
         postHash.anchorHash(
-            sid, sphincsHash, bytes("bafk..."),
+            sid, sphincsHash, poseidonHash, bytes("bafk..."),
             PostHashAnchors.DocumentType.BIRTH_CERTIFICATE, 0
         );
         (bool v, ) = postHash.verifyHash(sid, sphincsHash, 0);
@@ -324,10 +408,10 @@ contract VeritasChainTest is Test {
 
         // 4. DWH handoff
         bytes32 root  = keccak256(abi.encodePacked(sid, "leg-1-root"));
-        bytes memory sSig = _signRoot(senderKey,   root);
-        bytes memory rSig = _signRoot(receiverKey, root);
+        bytes memory sSig = _signHandoff(senderKey,   root, bytes32(0), 0, bytes32(0));
+        bytes memory rSig = _signHandoff(receiverKey, root, bytes32(0), 0, bytes32(0));
 
-        bytes32 handoffHash = dwh.recordHandoff(sid, root, sender, receiver, sSig, rSig);
+        bytes32 handoffHash = dwh.recordHandoff(sid, root, bytes32(0), sender, receiver, sSig, rSig);
         assertFalse(dwh.isContested(handoffHash));
 
         // 5. Anchor Merkle root cross-chain
@@ -339,7 +423,11 @@ contract VeritasChainTest is Test {
         assertEq(exported, root);
 
         // 6. Update freshness with ZK proof
-        freshness.updateScoreWithProof(sid, 6, keccak256("proof-leg-1"));
+        bytes memory proof = hex"06";
+        uint256[] memory signals = new uint256[](2);
+        signals[0] = 94;
+        signals[1] = 100;
+        freshness.updateScoreWithProof(sid, 94, proof, signals);
         assertEq(freshness.getScore(sid), 94); // 100 - 6
 
         // 7. Regulator requests and approves vault access
@@ -368,18 +456,25 @@ contract VeritasChainTest is Test {
     }
 
     function test_FreshnessCritical_NotEmittedWhenAlreadyCritical() public {
+        _registerShipment();
         freshness.initialize(shipmentId);
-        bytes32 proof1 = keccak256("proof-1");
-        bytes32 proof2 = keccak256("proof-2");
+        bytes memory proof1 = hex"11";
+        bytes memory proof2 = hex"12";
+        uint256[] memory signals1 = new uint256[](2);
+        signals1[0] = 20;
+        signals1[1] = 100;
+        uint256[] memory signals2 = new uint256[](2);
+        signals2[0] = 10;
+        signals2[1] = 20;
 
         // First penalty: 100 → 20 (crosses threshold, event emitted)
-        freshness.updateScoreWithProof(shipmentId, 80, proof1);
+        freshness.updateScoreWithProof(shipmentId, 20, proof1, signals1);
         assertTrue(freshness.isCritical(shipmentId));
 
         // Second penalty: 20 → 10 (already below threshold, no critical event)
         // We record logs and verify FreshnessCritical is NOT emitted again
         vm.recordLogs();
-        freshness.updateScoreWithProof(shipmentId, 10, proof2);
+        freshness.updateScoreWithProof(shipmentId, 10, proof2, signals2);
         Vm.Log[] memory logs = vm.getRecordedLogs();
         bytes32 criticalSig = keccak256("FreshnessCritical(bytes32,uint8,uint64)");
         bool foundCritical = false;
@@ -390,6 +485,7 @@ contract VeritasChainTest is Test {
     }
 
     function test_AdminSetScore_EmitsCriticalOnThresholdCross() public {
+        _registerShipment();
         freshness.initialize(shipmentId);
         vm.recordLogs();
         freshness.adminSetScore(shipmentId, 20); // 100 → 20, crosses 30
@@ -405,12 +501,8 @@ contract VeritasChainTest is Test {
     // -- DWHVerifier: shipmentId validation in contestHandoff --
 
     function test_ContestHandoff_WrongShipmentId_Reverts() public {
-        bytes memory sSig = _signRoot(senderKey, merkleRoot);
-        bytes memory rSig = _signRoot(receiverKey, merkleRoot);
-
-        bytes32 handoffHash = dwh.recordHandoff(
-            shipmentId, merkleRoot, sender, receiver, sSig, rSig
-        );
+        _registerShipment();
+        bytes32 handoffHash = _recordValidHandoff(merkleRoot, bytes32(0));
 
         bytes32 wrongShipmentId = keccak256("wrong-shipment");
         vm.prank(receiver);
@@ -419,10 +511,21 @@ contract VeritasChainTest is Test {
     }
 
     function test_RecordHandoff_EmptyShipmentId_Reverts() public {
-        bytes memory sSig = _signRoot(senderKey, merkleRoot);
-        bytes memory rSig = _signRoot(receiverKey, merkleRoot);
+        bytes32 digest = dwh.handoffDigest(
+            bytes32(0),
+            merkleRoot,
+            bytes32(0),
+            sender,
+            receiver,
+            0,
+            bytes32(0)
+        );
+        (uint8 v1, bytes32 r1, bytes32 s1) = vm.sign(senderKey, digest);
+        (uint8 v2, bytes32 r2, bytes32 s2) = vm.sign(receiverKey, digest);
+        bytes memory sSig = abi.encodePacked(r1, s1, v1);
+        bytes memory rSig = abi.encodePacked(r2, s2, v2);
         vm.expectRevert("empty shipment id");
-        dwh.recordHandoff(bytes32(0), merkleRoot, sender, receiver, sSig, rSig);
+        dwh.recordHandoff(bytes32(0), merkleRoot, bytes32(0), sender, receiver, sSig, rSig);
     }
 
     // -- ShipmentRegistry: status transition guards --
@@ -464,6 +567,7 @@ contract VeritasChainTest is Test {
     // -- RegulatorVaultAccess: edge cases --
 
     function test_RevokeAccess_AlreadyRevoked_Reverts() public {
+        _registerShipment();
         bytes32 requestId = vault.requestAccess(shipmentId, sphincsHash);
         vault.revokeAccess(requestId);
         vm.expectRevert("already revoked");
@@ -486,6 +590,8 @@ contract VeritasChainTest is Test {
     }
 
     function test_VerifyExternalAnchor_ZeroClaimedRoot_Reverts() public {
+        _registerShipment();
+        _recordValidHandoff(merkleRoot, bytes32(0));
         bytes32 anchorId = anchor.recordAnchor(
             shipmentId, merkleRoot,
             InteroperabilityAnchor.BridgeProtocol.LAYERZERO, 0
@@ -498,18 +604,20 @@ contract VeritasChainTest is Test {
     // -- PostHashAnchors: edge cases --
 
     function test_AnchorHash_CIDTooLong_Reverts() public {
+        _registerShipment();
         bytes memory longCid = new bytes(129);
         vm.expectRevert("CID too long");
         postHash.anchorHash(
-            shipmentId, sphincsHash, longCid,
+            shipmentId, sphincsHash, poseidonHash, longCid,
             PostHashAnchors.DocumentType.OTHER, 0
         );
     }
 
     function test_VerifyHash_WithMaxIterations() public {
+        _registerShipment();
         bytes memory cid = bytes("bafkreig...");
         postHash.anchorHash(
-            shipmentId, sphincsHash, cid,
+            shipmentId, sphincsHash, poseidonHash, cid,
             PostHashAnchors.DocumentType.BIRTH_CERTIFICATE, 0
         );
         // maxIterations=1 should find it (it's the first entry)

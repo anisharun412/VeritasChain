@@ -47,6 +47,8 @@ contract ShipmentRegistry is AccessControl, ReentrancyGuard {
     // ─────────────────────────────────────────────────────────────────────────
     mapping(bytes32 => Shipment) public shipments;
     uint64 public shipmentCount;
+    mapping(bytes32 => bool) public usedSealFingerprints;
+    mapping(bytes32 => bool) public usedMetaHashes;
 
     // ─────────────────────────────────────────────────────────────────────────
     // Events
@@ -100,6 +102,8 @@ contract ShipmentRegistry is AccessControl, ReentrancyGuard {
         require(registrarDid.length > 0,           "empty DID");
         require(registrarDid.length <= 256,        "DID too long");  // W3C DID max practical length
         require(nfcSealFingerprint != bytes32(0),  "empty seal fingerprint");
+        require(!usedMetaHashes[sphincsPqMetaHash], "meta hash already used");
+        require(!usedSealFingerprints[nfcSealFingerprint], "seal already used");
 
         shipmentCount += 1;
         shipmentId = keccak256(
@@ -120,6 +124,9 @@ contract ShipmentRegistry is AccessControl, ReentrancyGuard {
             registeredAt:       uint64(block.timestamp),
             status:             ShipmentStatus.REGISTERED
         });
+
+        usedMetaHashes[sphincsPqMetaHash] = true;
+        usedSealFingerprints[nfcSealFingerprint] = true;
 
         emit ShipmentRegistered(
             shipmentId,
@@ -153,6 +160,8 @@ contract ShipmentRegistry is AccessControl, ReentrancyGuard {
 
         ShipmentStatus prev = s.status;
         require(prev != newStatus, "status unchanged");
+        require(prev != ShipmentStatus.CONTESTED, "terminal state: contested");
+        require(prev != ShipmentStatus.RECALLED, "terminal state: recalled");
 
         // CONTESTED and RECALLED are always reachable from any state.
         if (newStatus != ShipmentStatus.CONTESTED && newStatus != ShipmentStatus.RECALLED) {

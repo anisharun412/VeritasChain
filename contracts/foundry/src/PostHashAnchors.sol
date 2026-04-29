@@ -4,6 +4,8 @@ pragma solidity ^0.8.26;
 import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
+import "./IShipmentRegistry.sol";
+
 /// @title PostHashAnchors
 /// @notice Anchors post-quantum SPHINCS+ document hashes on-chain so that
 ///         every document in the VeritasChain custody trail has an immutable,
@@ -26,6 +28,7 @@ import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 ///         (e.g. between handoffs) and queried by the Inspect app without
 ///         needing a full handoff record.
 contract PostHashAnchors is AccessControl, ReentrancyGuard {
+        IShipmentRegistry public immutable shipmentRegistry;
     // ─────────────────────────────────────────────────────────────────────────
     // Roles
     // ─────────────────────────────────────────────────────────────────────────
@@ -46,6 +49,7 @@ contract PostHashAnchors is AccessControl, ReentrancyGuard {
 
     struct HashAnchor {
         bytes32      sphincsPqHash;   // SPHINCS+ PQ hash of the document
+        bytes32      poseidonHash;    // Poseidon(sphincs_hi, sphincs_lo)
         bytes        ipfsCid;         // IPFS CIDv1 multihash bytes
         DocumentType docType;
         address      anchoredBy;
@@ -74,6 +78,7 @@ contract PostHashAnchors is AccessControl, ReentrancyGuard {
         bytes32 indexed anchorId,
         bytes32 indexed shipmentId,
         bytes32         sphincsPqHash,
+        bytes32         poseidonHash,
         DocumentType    docType,
         uint32          legIndex,
         address         anchoredBy,
@@ -94,7 +99,9 @@ contract PostHashAnchors is AccessControl, ReentrancyGuard {
     // ─────────────────────────────────────────────────────────────────────────
     // Constructor
     // ─────────────────────────────────────────────────────────────────────────
-    constructor() {
+    constructor(address registryAddress) {
+        require(registryAddress != address(0), "invalid registry");
+        shipmentRegistry = IShipmentRegistry(registryAddress);
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
         _grantRole(ADMIN_ROLE, msg.sender);
         _grantRole(ANCHOR_ROLE, msg.sender);
@@ -114,6 +121,7 @@ contract PostHashAnchors is AccessControl, ReentrancyGuard {
     function anchorHash(
         bytes32      shipmentId,
         bytes32      sphincsPqHash,
+        bytes32      poseidonHash,
         bytes  calldata ipfsCid,
         DocumentType docType,
         uint32       legIndex
@@ -124,9 +132,11 @@ contract PostHashAnchors is AccessControl, ReentrancyGuard {
         returns (bytes32 anchorId)
     {
         require(sphincsPqHash != bytes32(0), "empty hash");
+        require(poseidonHash != bytes32(0), "empty poseidon hash");
         require(ipfsCid.length > 0,          "empty CID");
         require(ipfsCid.length <= 128,        "CID too long");  // CIDv1 multihash <= 128 bytes
         require(shipmentId != bytes32(0),    "empty shipment id");
+        require(shipmentRegistry.exists(shipmentId), "shipment not found");
 
         anchorCount += 1;
         anchorId = keccak256(
@@ -141,6 +151,7 @@ contract PostHashAnchors is AccessControl, ReentrancyGuard {
 
         anchors[anchorId] = HashAnchor({
             sphincsPqHash: sphincsPqHash,
+            poseidonHash:  poseidonHash,
             ipfsCid:       ipfsCid,
             docType:       docType,
             anchoredBy:    msg.sender,
@@ -155,6 +166,7 @@ contract PostHashAnchors is AccessControl, ReentrancyGuard {
             anchorId,
             shipmentId,
             sphincsPqHash,
+            poseidonHash,
             docType,
             legIndex,
             msg.sender,
@@ -204,6 +216,33 @@ contract PostHashAnchors is AccessControl, ReentrancyGuard {
         returns (bytes32[] memory)
     {
         return _shipmentAnchors[shipmentId];
+    }
+
+    /// @notice Verify whether a Poseidon commitment has been anchored.
+    /// @param  maxIterations  Safety cap on loop iterations (0 = use default 256).
+    /// @return verified   True when found and not revoked.
+    /// @return anchorId   The matching anchor id (bytes32(0) if not found).
+    function verifyPoseidonHash(
+        bytes32 shipmentId,
+        bytes32 poseidonHash,
+        uint256 maxIterations
+    )
+        external
+        view
+        returns (bool verified, bytes32 anchorId)
+    {
+        bytes32[] storage ids = _shipmentAnchors[shipmentId];
+        uint256 limit = maxIterations == 0 ? 256 : maxIterations;
+        uint256 end   = ids.length < limit ? ids.length : limit;
+        for (uint256 i = 0; i < end; i++) {
+            if (
+                anchors[ids[i]].poseidonHash == poseidonHash &&
+                !isRevoked[ids[i]]
+            ) {
+                return (true, ids[i]);
+            }
+        }
+        return (false, bytes32(0));
     }
 
     // ─────────────────────────────────────────────────────────────────────────

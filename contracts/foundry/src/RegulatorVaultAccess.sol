@@ -4,6 +4,8 @@ pragma solidity ^0.8.26;
 import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
+import "./IShipmentRegistry.sol";
+
 /// @title RegulatorVaultAccess
 /// @notice On-chain layer for regulatory vault access control.
 ///         Records access requests with SPHINCS+ document hashes, enforces a
@@ -13,6 +15,7 @@ import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 ///         (Rust service). This contract acts as the authoritative gate that
 ///         the off-chain vault checks before releasing key shares.
 contract RegulatorVaultAccess is AccessControl, ReentrancyGuard {
+        IShipmentRegistry public immutable shipmentRegistry;
     // ─────────────────────────────────────────────────────────────────────────
     // Roles
     // ─────────────────────────────────────────────────────────────────────────
@@ -25,7 +28,7 @@ contract RegulatorVaultAccess is AccessControl, ReentrancyGuard {
 
     /// @notice Minimum number of regulator approvals required to trigger
     ///         decryption (threshold-of-N multi-sig).
-    uint8 public approvalThreshold;
+    uint16 public approvalThreshold;
 
     struct AccessRequest {
         bytes32 shipmentId;
@@ -33,7 +36,7 @@ contract RegulatorVaultAccess is AccessControl, ReentrancyGuard {
         bytes32 sphincsPqHash;
         address requester;
         uint64  requestedAt;
-        uint8   approvalCount;
+        uint16  approvalCount;
         bool    decryptionTriggered;
         bool    revoked;
     }
@@ -56,7 +59,7 @@ contract RegulatorVaultAccess is AccessControl, ReentrancyGuard {
     event AccessApproved(
         bytes32 indexed requestId,
         address indexed regulator,
-        uint8           totalApprovals,
+        uint16          totalApprovals,
         uint64          timestamp
     );
 
@@ -74,13 +77,15 @@ contract RegulatorVaultAccess is AccessControl, ReentrancyGuard {
         uint64          timestamp
     );
 
-    event ThresholdUpdated(uint8 oldThreshold, uint8 newThreshold);
+    event ThresholdUpdated(uint16 oldThreshold, uint16 newThreshold);
 
     // ─────────────────────────────────────────────────────────────────────────
     // Constructor
     // ─────────────────────────────────────────────────────────────────────────
-    constructor(uint8 _approvalThreshold) {
+    constructor(address registryAddress, uint16 _approvalThreshold) {
+        require(registryAddress != address(0), "invalid registry");
         require(_approvalThreshold > 0, "threshold must be > 0");
+        shipmentRegistry = IShipmentRegistry(registryAddress);
         approvalThreshold = _approvalThreshold;
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
         _grantRole(ADMIN_ROLE, msg.sender);
@@ -102,6 +107,7 @@ contract RegulatorVaultAccess is AccessControl, ReentrancyGuard {
     ) external nonReentrant returns (bytes32 requestId) {
         require(shipmentId    != bytes32(0), "invalid shipment id");
         require(sphincsPqHash != bytes32(0), "invalid hash");
+        require(shipmentRegistry.exists(shipmentId), "shipment not found");
 
         requestId = keccak256(
             abi.encodePacked(shipmentId, sphincsPqHash, msg.sender, block.timestamp)
@@ -183,13 +189,13 @@ contract RegulatorVaultAccess is AccessControl, ReentrancyGuard {
     /// @dev    Threshold change only affects NEW requests. Existing requests
     ///         that have already accumulated approvals are not re-evaluated;
     ///         they will trigger on the NEXT approveAccess call if count >= newThreshold.
-    function setApprovalThreshold(uint8 _newThreshold)
+    function setApprovalThreshold(uint16 newThreshold)
         external
         onlyRole(ADMIN_ROLE)
     {
-        require(_newThreshold > 0, "threshold must be > 0");
-        emit ThresholdUpdated(approvalThreshold, _newThreshold);
-        approvalThreshold = _newThreshold;
+        require(newThreshold > 0, "threshold must be > 0");
+        emit ThresholdUpdated(approvalThreshold, newThreshold);
+        approvalThreshold = newThreshold;
     }
 
     // ─────────────────────────────────────────────────────────────────────────

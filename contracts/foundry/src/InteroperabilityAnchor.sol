@@ -4,6 +4,26 @@ pragma solidity ^0.8.26;
 import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
+import "./IShipmentRegistry.sol";
+
+interface IDWHVerifier {
+    function shipmentRegistry() external view returns (IShipmentRegistry);
+    function latestHandoff(bytes32 shipmentId) external view returns (bytes32);
+    function handoffRecords(bytes32 handoffHash)
+        external
+        view
+        returns (
+            bytes32 shipmentId,
+            bytes32 merkleRoot,
+            bytes32 prevHandoffHash,
+            address sender,
+            address receiver,
+            uint64 recordedAt,
+            bool contested,
+            bytes32 reasonHash
+        );
+}
+
 /// @title InteroperabilityAnchor
 /// @notice Publishes canonical Merkle roots that cross-chain relayers
 ///         (LayerZero V2 and Chainlink CCIP) can read and attest.
@@ -16,6 +36,7 @@ import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 ///         interface so that destination-chain contracts can trustlessly
 ///         confirm that an anchor originated here.
 contract InteroperabilityAnchor is AccessControl, ReentrancyGuard {
+        IDWHVerifier public immutable dwhVerifier;
     // ─────────────────────────────────────────────────────────────────────────
     // Roles
     // ─────────────────────────────────────────────────────────────────────────
@@ -78,7 +99,9 @@ contract InteroperabilityAnchor is AccessControl, ReentrancyGuard {
     // ─────────────────────────────────────────────────────────────────────────
     // Constructor
     // ─────────────────────────────────────────────────────────────────────────
-    constructor() {
+    constructor(address dwhVerifierAddress) {
+        require(dwhVerifierAddress != address(0), "invalid DWH verifier");
+        dwhVerifier = IDWHVerifier(dwhVerifierAddress);
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
         _grantRole(ANCHOR_WRITER_ROLE, msg.sender);
     }
@@ -108,6 +131,27 @@ contract InteroperabilityAnchor is AccessControl, ReentrancyGuard {
     {
         require(shipmentId != bytes32(0), "empty shipment id");
         require(merkleRoot != bytes32(0), "empty root");
+
+        bytes32 latestHandoff = dwhVerifier.latestHandoff(shipmentId);
+        if (latestHandoff != bytes32(0)) {
+            (
+                bytes32 recShipmentId,
+                bytes32 recRoot,
+                bytes32 _prevHandoff,
+                address _sender,
+                address _receiver,
+                uint64  _recordedAt,
+                bool    contested,
+                bytes32 _reasonHash
+            ) = dwhVerifier.handoffRecords(latestHandoff);
+            require(recShipmentId == shipmentId, "handoff shipment mismatch");
+            require(!contested, "latest handoff contested");
+            require(recRoot == merkleRoot, "root not latest handoff");
+        } else {
+            // Fallback: Anchor the origin metaHash if no handoff exists
+            bytes32 metaHash = dwhVerifier.shipmentRegistry().metaHash(shipmentId);
+            require(metaHash == merkleRoot, "root not meta hash");
+        }
 
         anchorId = keccak256(
             abi.encodePacked(shipmentId, merkleRoot, block.timestamp, block.number, msg.sender)
