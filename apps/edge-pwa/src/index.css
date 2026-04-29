@@ -343,6 +343,7 @@ button { font-family: inherit; }
   display: flex; align-items: center; justify-content: center;
   width: 120px; height: 120px; position: relative;
 }
+.offline-sync-btn:disabled { opacity: 0.5; }
 
 /* ── Code block ──────────────────────────────────────────────────────────── */
 .vc-code-block {
@@ -351,6 +352,9 @@ button { font-family: inherit; }
   font-family: 'Courier New', Consolas, monospace; font-size: 13px;
   line-height: 1.7; overflow-x: auto;
 }
+.form-input:focus, .form-textarea:focus { outline: none; border-color: var(--blue); box-shadow: 0 0 0 3px rgba(59,130,246,0.1); }
+.form-input:disabled, .form-textarea:disabled { background: var(--gray-100); color: var(--gray-500); cursor: not-allowed; }
+.form-textarea { resize: vertical; min-height: 5rem; }
 
 /* ── Tag / chip ──────────────────────────────────────────────────────────── */
 .vc-chip {
