@@ -1,4 +1,4 @@
-# Setup guide
+co# Setup guide
 
 ## Prerequisites
 - Node.js 20 LTS

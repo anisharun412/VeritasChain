@@ -1,4 +1,5 @@
-// Placeholder circuit: replace with proper range checks.
+pragma circom 2.1.0;
+
 template TempRange() {
   signal input reading;
   signal input min;
