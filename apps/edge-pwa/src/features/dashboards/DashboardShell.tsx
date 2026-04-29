@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
 import { useOfflineQueue } from '../offline/useOfflineQueue';
 import { OfflineQueue } from '../offline/OfflineQueue';
+import { WalletConnect } from '../blockchain/WalletConnect';
 
 interface DashboardShellProps {
   accentColor: string;
@@ -33,6 +34,7 @@ export default function DashboardShell({
         </div>
 
         <div className="header-actions">
+          <WalletConnect />
           {actions && <div>{actions}</div>}
           <button className="logout-btn" onClick={logout}>Sign out</button>
         </div>

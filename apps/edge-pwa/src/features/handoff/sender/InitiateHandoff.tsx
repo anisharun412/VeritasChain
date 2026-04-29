@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Shipment, HandoffBundle } from '@veritaschain/types';
 import { useAuth } from '../../auth/AuthContext';
 import { useBLEAdvertiser } from './useBLEAdvertiser';
 import { HandoffSummary } from './HandoffSummary';
+import { ChainSubmit } from '../../blockchain/ChainSubmit';
 
 interface InitiateHandoffProps {
   shipment: Shipment;
@@ -14,6 +15,18 @@ export const InitiateHandoff: React.FC<InitiateHandoffProps> = ({ shipment, onCo
   const [fieldNotes, setFieldNotes] = useState('');
   const [showSummary, setShowSummary] = useState(false);
   const { isAdvertising, error, startAdvertise, stopAdvertise } = useBLEAdvertiser();
+
+  // Compute a simple Merkle root from document hashes for on-chain submission
+  const merkleRoot = useMemo(() => {
+    const hashes = shipment.documents.map((d) => d.hash).join('');
+    // Simple hex digest (in production: real Merkle tree from packages/crypto)
+    const combined = hashes || shipment.id;
+    let hash = 0;
+    for (let i = 0; i < combined.length; i++) {
+      hash = ((hash << 5) - hash + combined.charCodeAt(i)) | 0;
+    }
+    return '0x' + Math.abs(hash).toString(16).padStart(64, '0');
+  }, [shipment]);
 
   const createBundle = (): HandoffBundle => ({
     shipmentId: shipment.id,
@@ -106,6 +119,25 @@ export const InitiateHandoff: React.FC<InitiateHandoffProps> = ({ shipment, onCo
           isLoading={isAdvertising}
         />
       )}
+
+      {/* ── Blockchain submission ───────────────────────────────── */}
+      <div style={{ marginTop: '1.5rem' }}>
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.75rem',
+        }}>
+          <div style={{ flex: 1, height: '1px', background: 'var(--gray-200)' }} />
+          <span style={{ fontSize: '0.75rem', color: 'var(--gray-500)', whiteSpace: 'nowrap', fontWeight: 600 }}>
+            ⛓ RECORD ON BLOCKCHAIN
+          </span>
+          <div style={{ flex: 1, height: '1px', background: 'var(--gray-200)' }} />
+        </div>
+        <ChainSubmit
+          shipmentId={shipment.id}
+          merkleRoot={merkleRoot}
+          zkProofHash={'zk-proof-' + shipment.id + '-' + Date.now()}
+          mode="send"
+        />
+      </div>
     </div>
   );
 };
