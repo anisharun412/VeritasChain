@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Shipment } from '@veritaschain/types';
 import { useNFCReader } from './useNFCReader';
 import { useBLEReceiver } from './useBLEReceiver';
@@ -12,6 +13,7 @@ interface AcceptHandoffProps {
 }
 
 export const AcceptHandoff: React.FC<AcceptHandoffProps> = ({ shipment, onComplete }) => {
+  const navigate = useNavigate();
   const { isScanning: isNFCScanning, nfcData, error: nfcError, scan: scanNFC, stop: stopNFC } = useNFCReader();
   const { isScanning: isBLEScanning, error: bleError, receivedBundle, startScan: startBLEScan, stopScan: stopBLEScan } = useBLEReceiver();
   
@@ -35,7 +37,7 @@ export const AcceptHandoff: React.FC<AcceptHandoffProps> = ({ shipment, onComple
   };
 
   const handleBLEScan = async () => {
-    await startBLEScan();
+    navigate('/handshake');
   };
 
   const handleSimulate = () => {
