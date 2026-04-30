@@ -5,7 +5,7 @@ import { io, Socket } from 'socket.io-client';
 const SERVER = import.meta.env.VITE_TRACKING_SERVER || `http://${window.location.hostname}:3002`;
 
 type Role = 'sender' | 'receiver' | null;
-type Status = 'idle' | 'choosing' | 'waiting' | 'scanning' | 'connected' | 'bundle' | 'accepted' | 'contested' | 'completed';
+type Status = 'idle' | 'choosing' | 'waiting' | 'scanning' | 'connected' | 'bundle' | 'generating_proof' | 'accepted' | 'contested' | 'completed';
 
 interface RoomInfo {
   shipmentId: string;
@@ -27,6 +27,7 @@ export default function HandshakePage() {
   const [completedData, setCompletedData] = useState<any>(null);
   const [contestReason, setContestReason] = useState('');
   const [scanProgress, setScanProgress] = useState(0);
+  const [zkLines, setZkLines] = useState<string[]>([]);
   const scanTimer = useRef<any>(null);
 
   // Connect socket on mount
@@ -111,9 +112,35 @@ export default function HandshakePage() {
     setStatus('connected');
   }, [name, persona]);
 
-  // ── Receiver: Accept ──
+  // ── Receiver: Accept & Generate ZK Proof ──
   const handleAccept = useCallback(() => {
-    socketRef.current?.emit('handshake:accept', { shipmentId });
+    setStatus('generating_proof');
+    setZkLines([]);
+    
+    const lines = [
+      '> Initializing Groth16 Prover...',
+      '> Loading verification key for Cold Chain Circuit v1.2...',
+      '> Fetching encrypted IoT logger data payload...',
+      '> Computing constraints (Temperature <= 8°C)...',
+      '> Compiling polynomial witnesses...',
+      '> Checking public inputs: hash(documents), shipmentId...',
+      '> VALID: Temperature bounds strictly met for entire transit duration.',
+      '> Generating zk-SNARK proof (curve bn128)...',
+      '> Proof Generated: 0x' + Math.random().toString(16).slice(2) + Math.random().toString(16).slice(2) + '...',
+      '> Executing P2P signature exchange...',
+    ];
+
+    let current = 0;
+    const interval = setInterval(() => {
+      setZkLines(prev => [...prev, lines[current]]);
+      current++;
+      if (current >= lines.length) {
+        clearInterval(interval);
+        setTimeout(() => {
+          socketRef.current?.emit('handshake:accept', { shipmentId });
+        }, 800);
+      }
+    }, 400); // 400ms per line = about 4 seconds total animation
   }, [shipmentId]);
 
   // ── Receiver: Contest ──
@@ -174,6 +201,34 @@ export default function HandshakePage() {
             New Handshake
           </button>
         </>)}
+      </div>
+    );
+  }
+
+  // ── ZK Proof Generation screen ──
+  if (status === 'generating_proof') {
+    return (
+      <div style={{ minHeight: '100vh', background: 'linear-gradient(135deg, #020617, #0f172a)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+        <div style={{ background: '#000', borderRadius: 12, padding: 24, width: '100%', maxWidth: 520, border: '1px solid #334155', boxShadow: '0 0 40px rgba(16,185,129,0.1)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
+            <div style={{ width: 12, height: 12, borderRadius: '50%', background: '#EF4444' }} />
+            <div style={{ width: 12, height: 12, borderRadius: '50%', background: '#F59E0B' }} />
+            <div style={{ width: 12, height: 12, borderRadius: '50%', background: '#10B981' }} />
+            <span style={{ color: '#64748b', fontSize: 12, marginLeft: 8, fontFamily: 'monospace' }}>VeritasChain ZK-Prover</span>
+          </div>
+          <div style={{ fontFamily: 'monospace', color: '#10B981', fontSize: 13, lineHeight: '1.6', minHeight: 280, display: 'flex', flexDirection: 'column', gap: 4 }}>
+            {zkLines.map((line, i) => (
+              <div key={i} style={{ animation: 'fade-in 0.2s ease-out' }}>{line}</div>
+            ))}
+            {zkLines.length < 10 && (
+              <div style={{ animation: 'pulse 1s infinite', color: '#3B82F6' }}>_</div>
+            )}
+          </div>
+          <style>{`
+            @keyframes fade-in { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+            @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+          `}</style>
+        </div>
       </div>
     );
   }

@@ -4,6 +4,7 @@ import { useAuth } from '../auth/AuthContext';
 import { UserRole, getRoleDefinition } from '../auth/roles';
 import { useShipmentTracking } from './useShipmentTracking';
 import ShipmentMap from './ShipmentMap';
+import LiveTemperatureChart from './LiveTemperatureChart';
 
 const ROLE_TITLE: Record<UserRole, string> = {
   [UserRole.MANUFACTURER]: '🏭 Origin Tracking',
@@ -86,6 +87,7 @@ export default function TrackingPage() {
 
       {/* ── Map Area ── */}
       <div style={{ flex: 1, position: 'relative' }}>
+        <LiveTemperatureChart />
         <ShipmentMap userRole={userRole!} />
       </div>
     </div>
