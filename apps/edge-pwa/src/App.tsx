@@ -20,6 +20,8 @@ import DocumentationPage from './pages/DocumentationPage';
 import AboutPage from './pages/AboutPage';
 import InspectPage from './pages/InspectPage';
 
+import HandshakePage from './pages/HandshakePage';
+
 import './index.css';
 
 // Mock shipment used by handoff routes (replace with real fetch later)
@@ -73,6 +75,7 @@ export default function App() {
           {/* Public */}
           <Route path="/login" element={<LoginPage />} />
           <Route path="/inspect" element={<InspectPage />} />
+          <Route path="/handshake" element={<HandshakePage />} />
 
           {/* Role-based home */}
           <Route

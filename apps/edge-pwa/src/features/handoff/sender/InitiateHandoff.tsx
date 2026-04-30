@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Shipment, HandoffBundle } from '@veritaschain/types';
 import { useAuth } from '../../auth/AuthContext';
 import { useBLEAdvertiser } from './useBLEAdvertiser';
@@ -12,6 +13,7 @@ interface InitiateHandoffProps {
 
 export const InitiateHandoff: React.FC<InitiateHandoffProps> = ({ shipment, onComplete }) => {
   const { isAuthenticated } = useAuth();
+  const navigate = useNavigate();
   const [fieldNotes, setFieldNotes] = useState('');
   const [showSummary, setShowSummary] = useState(false);
   const { isAdvertising, error, startAdvertise, stopAdvertise } = useBLEAdvertiser();
@@ -40,9 +42,7 @@ export const InitiateHandoff: React.FC<InitiateHandoffProps> = ({ shipment, onCo
   });
 
   const handleInitiate = async () => {
-    const bundle = createBundle();
-    await startAdvertise(bundle);
-    setShowSummary(true);
+    navigate('/handshake');
   };
 
   if (!isAuthenticated) {
