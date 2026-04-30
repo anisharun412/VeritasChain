@@ -8,7 +8,7 @@ import { UserRole } from '../auth/roles';
 
 export default function CarrierDashboard() {
   const { displayName, organization } = useAuth();
-  const { roleDefinition, isSender, isReceiver } = useRoleAccess();
+  const { roleDefinition } = useRoleAccess();
   const navigate = useNavigate();
 
   return (
@@ -17,73 +17,99 @@ export default function CarrierDashboard() {
       icon="🚛"
       title={organization || 'Carrier'}
       subtitle={`${displayName} · ${roleDefinition?.label}`}
-      actions={
-        <div style={{ display: 'flex', gap: '0.5rem' }}>
-          {isReceiver && (
-            <span className="status-indicator status-completed">Can Accept Handoffs</span>
-          )}
-          {isSender && (
-            <span className="status-indicator status-in-transit">Can Initiate Handoffs</span>
-          )}
-        </div>
-      }
     >
-      {/* Incoming handoff alert */}
-      <div className="role-alert role-alert-amber">
-        <div style={{ flex: 1 }}>
-          <div className="role-alert-label">INCOMING HANDOFF</div>
-          <div className="role-alert-title">Vaccine Batch 47B</div>
-          <div className="role-alert-sub">From: Pfizer Belgium → Your Truck</div>
-          <div style={{ marginTop: '0.5rem', color: 'rgba(255,255,255,0.6)', fontSize: '0.8rem' }}>
-            Freshness: 100/100 · Temp: 4.1°C · 3 docs attached
+      {/* ── Incoming Handoff Alert ── */}
+      <div style={{
+        background: 'linear-gradient(135deg, #92400e, #b45309)',
+        borderRadius: 14, padding: 24, marginBottom: 20,
+        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+        gap: 20, flexWrap: 'wrap', boxShadow: '0 4px 16px rgba(146,64,14,0.25)',
+      }}>
+        <div>
+          <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.6)', marginBottom: 6 }}>
+            INCOMING HANDOFF
+          </div>
+          <div style={{ fontSize: 20, fontWeight: 800, color: '#fff', marginBottom: 4 }}>Vaccine Batch 47B</div>
+          <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.7)' }}>From: Pfizer Belgium → Your Truck</div>
+          <div style={{ marginTop: 10, display: 'flex', gap: 14, flexWrap: 'wrap', fontSize: 13, color: 'rgba(255,255,255,0.55)' }}>
+            <span>🌡️ 4.1°C</span>
+            <span>✅ 100% Freshness</span>
+            <span>📄 3 docs</span>
           </div>
         </div>
-        <button
-          className="btn"
-          style={{ background: '#fff', color: '#92400e', fontWeight: 700, flexShrink: 0 }}
-          onClick={() => navigate('/handoff/receive/SHIP-001')}
-        >
-          📥 Accept (Receive Mode)
-        </button>
+        <button onClick={() => navigate('/handoff/receive/SHIP-001')} style={{
+          background: '#fff', color: '#92400e', border: 'none', borderRadius: 10,
+          padding: '12px 24px', fontWeight: 700, fontSize: 15, cursor: 'pointer',
+          boxShadow: '0 4px 12px rgba(0,0,0,0.15)', minHeight: 48,
+          transition: 'transform 0.15s',
+        }}
+        onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-1px)'}
+        onMouseLeave={(e) => e.currentTarget.style.transform = 'none'}
+        >📥 Accept Handoff</button>
       </div>
 
-      {/* In-transit shipment */}
-      <div className="card">
-        <div className="card-header">
-          <span className="card-title">In Transit — Your Load</span>
-          <span className="status-indicator status-in-transit">
-            <span className="status-dot" />In Transit
+      {/* ── Active Transport Card ── */}
+      <div style={{
+        background: '#fff', borderRadius: 14, border: '1px solid #e2e8f0',
+        overflow: 'hidden', marginBottom: 20, boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+      }}>
+        <div style={{ padding: '16px 20px', borderBottom: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <span style={{ fontWeight: 700, fontSize: 15 }}>Active Transport — Your Load</span>
+          <span style={{
+            background: '#fffbeb', color: '#92400e', fontSize: 12, fontWeight: 600,
+            borderRadius: 999, padding: '4px 12px', display: 'inline-flex', alignItems: 'center', gap: 6,
+          }}>
+            <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#F59E0B', display: 'inline-block', animation: 'vc-pulse-ring 2s infinite' }} />
+            In Transit
           </span>
         </div>
-        <div className="card-body">
-          <div style={{ fontWeight: 600, fontSize: '1.05rem' }}>Vaccine Batch 46C</div>
-          <div className="text-sm text-gray" style={{ marginBottom: '0.75rem' }}>
-            From: Your Truck → To: Dubai Cold Storage
+        <div style={{ padding: 20 }}>
+          <div style={{ fontSize: 18, fontWeight: 700, color: '#0f172a', marginBottom: 4 }}>Vaccine Batch 46C</div>
+          <div style={{ fontSize: 14, color: '#64748b', marginBottom: 16 }}>Your Truck → Dubai Cold Storage</div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12, marginBottom: 20 }}>
+            <div style={{ background: '#f8fafc', borderRadius: 10, padding: '14px 16px', textAlign: 'center' }}>
+              <div style={{ fontSize: 24, fontWeight: 800, color: '#10B981' }}>94%</div>
+              <div style={{ fontSize: 11, color: '#64748b', marginTop: 2 }}>Freshness</div>
+            </div>
+            <div style={{ background: '#f8fafc', borderRadius: 10, padding: '14px 16px', textAlign: 'center' }}>
+              <div style={{ fontSize: 24, fontWeight: 800, color: '#3B82F6' }}>4.2°C</div>
+              <div style={{ fontSize: 11, color: '#64748b', marginTop: 2, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
+                Temperature <span style={{ color: '#10B981' }}>→</span>
+              </div>
+            </div>
+            <div style={{ background: '#f8fafc', borderRadius: 10, padding: '14px 16px', textAlign: 'center' }}>
+              <div style={{ fontSize: 24, fontWeight: 800, color: '#F59E0B' }}>2h 40m</div>
+              <div style={{ fontSize: 11, color: '#64748b', marginTop: 2 }}>ETA</div>
+            </div>
           </div>
-          <div style={{ display: 'flex', gap: '1rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
-            <span className="freshness-badge freshness-green">✓ 94%</span>
-            <span className="text-sm text-gray">🌡 4.2°C avg</span>
-            <span className="text-sm text-gray">⏱ 2h 40m remaining</span>
+
+          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+            <button onClick={() => navigate('/handoff/send/SHIP-003')} style={{
+              background: '#3B82F6', color: '#fff', border: 'none', borderRadius: 8,
+              padding: '10px 20px', fontWeight: 600, fontSize: 13, cursor: 'pointer',
+              minHeight: 44,
+            }}>🚀 Initiate Next Handoff</button>
+            <button onClick={() => navigate('/tracking')} style={{
+              background: 'transparent', border: '1px solid #e2e8f0', borderRadius: 8,
+              padding: '10px 20px', fontSize: 13, cursor: 'pointer', color: '#64748b',
+              minHeight: 44,
+            }}>🌍 View on Map</button>
           </div>
-          <button
-            className="btn btn-primary"
-            onClick={() => navigate('/handoff/send/SHIP-003')}
-          >
-            🚀 Initiate Next Handoff (Sender Mode)
-          </button>
         </div>
       </div>
 
-      {/* Carrier capability note */}
-      <div className="alert" style={{ background: 'var(--gray-100)', color: 'var(--gray-700)', border: '1px solid var(--gray-200)' }}>
-        💡 As a <strong>Carrier</strong>, you are the bridge in the chain — you can both
-        accept handoffs from manufacturers and initiate handoffs to the next destination.
+      {/* Info note */}
+      <div style={{
+        background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 10,
+        padding: '14px 18px', fontSize: 13, color: '#1d4ed8', marginBottom: 20,
+        display: 'flex', alignItems: 'flex-start', gap: 10,
+      }}>
+        <span>💡</span>
+        <div>As a <strong>Carrier</strong>, you are the bridge — accept handoffs from manufacturers and initiate handoffs to the next destination.</div>
       </div>
 
-      {/* On-Chain Layer */}
-      <div style={{ marginTop: '1.25rem' }}>
-        <BlockchainPanel role={UserRole.CARRIER} />
-      </div>
+      <BlockchainPanel role={UserRole.CARRIER} />
     </DashboardShell>
   );
 }

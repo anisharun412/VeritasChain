@@ -14,18 +14,18 @@ interface BlockchainPanelProps {
 function ContractStatusGrid() {
   const items = Object.values(contracts);
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.5rem', marginBottom: '1rem' }}>
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12, marginBottom: 20 }}>
       {items.map((c) => (
         <div key={c.name} style={{
           background: c.deployed ? '#f0fdf4' : '#fef2f2',
           border: `1px solid ${c.deployed ? '#bbf7d0' : '#fecaca'}`,
-          borderRadius: '0.5rem', padding: '0.6rem 0.75rem',
+          borderRadius: 12, padding: '12px 16px',
         }}>
-          <div style={{ fontSize: '0.7rem', color: c.deployed ? '#065f46' : '#991b1b', fontWeight: 600 }}>
-            {c.deployed ? '✓' : '✕'} {c.name}
+          <div style={{ fontSize: 13, color: c.deployed ? '#065f46' : '#991b1b', fontWeight: 700, marginBottom: 4 }}>
+            {c.deployed ? '✅' : '❌'} {c.name}
           </div>
-          <div style={{ fontSize: '0.65rem', fontFamily: 'monospace', color: '#6b7280', marginTop: '0.2rem', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-            {c.deployed ? c.address.slice(0, 10) + '…' : 'Not deployed'}
+          <div style={{ fontSize: 12, fontFamily: 'monospace', color: '#64748b', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            {c.deployed ? c.address.slice(0, 14) + '…' : 'Not deployed'}
           </div>
         </div>
       ))}
@@ -43,7 +43,6 @@ function RegisterShipmentForm() {
 
   const handleRegister = async () => {
     clearError();
-    // Generate deterministic hashes from random bytes for demo
     const metaHash = ethers.hexlify(ethers.randomBytes(32));
     const sealFP = ethers.hexlify(ethers.randomBytes(32));
     const result = await registerShipment(metaHash, did, sealFP);
@@ -55,21 +54,14 @@ function RegisterShipmentForm() {
 
   if (submitted && lastTx) {
     return (
-      <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '0.5rem', padding: '1rem' }}>
-        <div style={{ fontWeight: 700, color: '#065f46', marginBottom: '0.5rem' }}>✅ Shipment Registered On-Chain</div>
-        <div style={{ fontSize: '0.75rem', marginBottom: '0.25rem' }}>
-          <span style={{ color: '#6b7280' }}>Shipment ID: </span>
-          <code style={{ fontSize: '0.7rem', background: '#e2e8f0', padding: '0.1rem 0.4rem', borderRadius: '0.25rem' }}>{shipmentId.slice(0, 18)}…</code>
+      <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 12, padding: 20 }}>
+        <div style={{ fontWeight: 800, color: '#065f46', marginBottom: 12, fontSize: 15 }}>✅ Shipment Registered On-Chain</div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, fontSize: 13 }}>
+          <div><span style={{ color: '#64748b' }}>Shipment ID: </span><code style={{ background: '#e2e8f0', padding: '2px 6px', borderRadius: 4 }}>{shipmentId.slice(0, 18)}…</code></div>
+          <div><span style={{ color: '#64748b' }}>Tx Hash: </span><code style={{ background: '#e2e8f0', padding: '2px 6px', borderRadius: 4 }}>{lastTx.txHash.slice(0, 18)}…</code></div>
+          <div><span style={{ color: '#64748b' }}>Block: </span>#{lastTx.blockNumber} <span style={{ color: '#64748b', marginLeft: 8 }}>Gas: </span>{lastTx.gasUsed}</div>
         </div>
-        <div style={{ fontSize: '0.75rem', marginBottom: '0.25rem' }}>
-          <span style={{ color: '#6b7280' }}>Tx: </span>
-          <code style={{ fontSize: '0.7rem' }}>{lastTx.txHash.slice(0, 18)}…</code>
-        </div>
-        <div style={{ fontSize: '0.75rem' }}>
-          <span style={{ color: '#6b7280' }}>Block: </span>#{lastTx.blockNumber} · Gas: {lastTx.gasUsed}
-        </div>
-        <button onClick={() => setSubmitted(false)}
-          style={{ marginTop: '0.5rem', fontSize: '0.75rem', background: '#059669', color: '#fff', border: 'none', borderRadius: '0.35rem', padding: '0.35rem 0.75rem', cursor: 'pointer' }}>
+        <button onClick={() => setSubmitted(false)} style={{ marginTop: 16, background: '#10B981', color: '#fff', border: 'none', borderRadius: 8, padding: '8px 16px', fontWeight: 600, cursor: 'pointer', fontSize: 13 }}>
           Register Another
         </button>
       </div>
@@ -78,27 +70,18 @@ function RegisterShipmentForm() {
 
   return (
     <div>
-      <div style={{ fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.5rem' }}>📝 Register New Shipment</div>
-      <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+      <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 12, color: '#0f172a' }}>📝 Register New Shipment</div>
+      <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
         <input
-          value={did}
-          onChange={(e) => setDid(e.target.value)}
-          placeholder="Registrar DID"
-          style={{ flex: 1, minWidth: 200, padding: '0.5rem 0.75rem', border: '1px solid #d1d5db', borderRadius: '0.35rem', fontSize: '0.8rem' }}
+          value={did} onChange={(e) => setDid(e.target.value)} placeholder="Registrar DID"
+          style={{ flex: 1, minWidth: 200, padding: '10px 14px', border: '1px solid #e2e8f0', borderRadius: 8, fontSize: 14, outline: 'none' }}
         />
-        <button
-          onClick={handleRegister}
-          disabled={isSubmitting || !did.trim()}
-          className="btn btn-primary"
-          style={{ fontSize: '0.8rem', padding: '0.5rem 1rem' }}
-        >
-          {isSubmitting ? <>⏳ Sending…</> : '⛓ Register on Ganache'}
+        <button onClick={handleRegister} disabled={isSubmitting || !did.trim()} style={{ background: '#3B82F6', color: '#fff', border: 'none', borderRadius: 8, padding: '10px 20px', fontWeight: 600, cursor: 'pointer', fontSize: 14, opacity: isSubmitting ? 0.7 : 1 }}>
+          {isSubmitting ? '⏳ Sending…' : '⛓ Register on Ganache'}
         </button>
       </div>
-      {error && <div style={{ color: '#ef4444', fontSize: '0.75rem', marginTop: '0.4rem' }}>⚠ {error}</div>}
-      <div style={{ fontSize: '0.7rem', color: '#9ca3af', marginTop: '0.35rem' }}>
-        Generates random SPHINCS+ meta hash & NFC seal fingerprint for demo.
-      </div>
+      {error && <div style={{ color: '#EF4444', fontSize: 13, marginTop: 8, background: '#fef2f2', padding: '8px 12px', borderRadius: 8 }}>⚠ {error}</div>}
+      <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 10 }}>Generates random SPHINCS+ meta hash & NFC seal fingerprint for demo.</div>
     </div>
   );
 }
@@ -106,7 +89,7 @@ function RegisterShipmentForm() {
 // ─── Shared: Freshness Lookup ───────────────────────────────────────
 
 function FreshnessLookup() {
-  const { getFreshnessScore, initializeFreshness, isSubmitting, error } = useContract();
+  const { getFreshnessScore, isSubmitting, error } = useContract();
   const [shipmentId, setShipmentId] = useState('');
   const [score, setScore] = useState<number | null>(null);
   const [lookupDone, setLookupDone] = useState(false);
@@ -120,30 +103,28 @@ function FreshnessLookup() {
 
   return (
     <div>
-      <div style={{ fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.5rem' }}>📊 Freshness Score Lookup</div>
-      <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+      <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 12, color: '#0f172a' }}>📊 Freshness Score Lookup</div>
+      <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
         <input
-          value={shipmentId}
-          onChange={(e) => { setShipmentId(e.target.value); setLookupDone(false); }}
-          placeholder="Shipment ID (0x…)"
-          style={{ flex: 1, minWidth: 200, padding: '0.5rem 0.75rem', border: '1px solid #d1d5db', borderRadius: '0.35rem', fontSize: '0.8rem', fontFamily: 'monospace' }}
+          value={shipmentId} onChange={(e) => { setShipmentId(e.target.value); setLookupDone(false); }} placeholder="Shipment ID (0x…)"
+          style={{ flex: 1, minWidth: 200, padding: '10px 14px', border: '1px solid #e2e8f0', borderRadius: 8, fontSize: 14, fontFamily: 'monospace', outline: 'none' }}
         />
-        <button onClick={lookup} className="btn btn-ghost" style={{ fontSize: '0.8rem' }}>
+        <button onClick={lookup} style={{ background: '#fff', color: '#0f172a', border: '1px solid #e2e8f0', borderRadius: 8, padding: '10px 20px', fontWeight: 600, cursor: 'pointer', fontSize: 14 }}>
           🔍 Lookup
         </button>
       </div>
       {lookupDone && (
-        <div style={{ marginTop: '0.5rem', padding: '0.5rem 0.75rem', background: score !== null ? '#f0fdf4' : '#fef2f2', border: `1px solid ${score !== null ? '#bbf7d0' : '#fecaca'}`, borderRadius: '0.35rem' }}>
+        <div style={{ marginTop: 16, padding: '12px 16px', background: score !== null ? '#f0fdf4' : '#fef2f2', border: `1px solid ${score !== null ? '#bbf7d0' : '#fecaca'}`, borderRadius: 12 }}>
           {score !== null ? (
-            <span style={{ fontWeight: 700, color: score >= 80 ? '#065f46' : score >= 50 ? '#78350f' : '#991b1b' }}>
-              Score: {score}/100 {score <= 30 ? '🚨 CRITICAL' : score >= 80 ? '✅' : '⚠️'}
-            </span>
+            <div style={{ fontWeight: 800, color: score >= 80 ? '#065f46' : score >= 50 ? '#78350f' : '#991b1b', fontSize: 15, display: 'flex', alignItems: 'center', gap: 8 }}>
+              {score <= 30 ? '🚨' : score >= 80 ? '✅' : '⚠️'} Score: {score}/100 
+            </div>
           ) : (
-            <span style={{ color: '#991b1b', fontSize: '0.8rem' }}>Not found or not initialized</span>
+            <div style={{ color: '#991b1b', fontSize: 13, fontWeight: 600 }}>Not found or not initialized</div>
           )}
         </div>
       )}
-      {error && <div style={{ color: '#ef4444', fontSize: '0.75rem', marginTop: '0.4rem' }}>⚠ {error}</div>}
+      {error && <div style={{ color: '#EF4444', fontSize: 13, marginTop: 8 }}>⚠ {error}</div>}
     </div>
   );
 }
@@ -168,45 +149,41 @@ function ShipmentAuditLookup() {
 
   return (
     <div>
-      <div style={{ fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.5rem' }}>
+      <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 12, color: '#0f172a', display: 'flex', alignItems: 'center', gap: 8 }}>
         🔎 On-Chain Shipment Audit
-        {count !== null && <span style={{ fontWeight: 400, color: '#6b7280', marginLeft: '0.5rem' }}>({count} total registered)</span>}
+        {count !== null && <span style={{ fontWeight: 600, color: '#64748b', fontSize: 13, background: '#f1f5f9', padding: '2px 8px', borderRadius: 999 }}>{count} total registered</span>}
       </div>
-      <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
         <input
-          value={shipmentId}
-          onChange={(e) => { setShipmentId(e.target.value); setLookupDone(false); }}
-          placeholder="Shipment ID (0x…)"
-          style={{ flex: 1, minWidth: 200, padding: '0.5rem 0.75rem', border: '1px solid #d1d5db', borderRadius: '0.35rem', fontSize: '0.8rem', fontFamily: 'monospace' }}
+          value={shipmentId} onChange={(e) => { setShipmentId(e.target.value); setLookupDone(false); }} placeholder="Shipment ID (0x…)"
+          style={{ flex: 1, minWidth: 200, padding: '10px 14px', border: '1px solid #e2e8f0', borderRadius: 8, fontSize: 14, fontFamily: 'monospace', outline: 'none' }}
         />
-        <button onClick={lookup} className="btn btn-ghost" style={{ fontSize: '0.8rem' }}>
+        <button onClick={lookup} style={{ background: '#fff', color: '#0f172a', border: '1px solid #e2e8f0', borderRadius: 8, padding: '10px 20px', fontWeight: 600, cursor: 'pointer', fontSize: 14 }}>
           🔍 Audit
         </button>
       </div>
       {lookupDone && shipment && (
-        <div style={{ marginTop: '0.5rem', padding: '0.75rem', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '0.5rem' }}>
-          <table style={{ width: '100%', fontSize: '0.78rem' }}>
+        <div style={{ marginTop: 16, padding: 20, background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 12 }}>
+          <table style={{ width: '100%', fontSize: 13, borderCollapse: 'collapse' }}>
             <tbody>
               {[
                 ['Status', SHIPMENT_STATUS_LABELS[shipment.status] || 'Unknown'],
                 ['Registrar', shipment.registrar],
                 ['DID', shipment.registrarDid],
-                ['Registered At', new Date(shipment.registeredAt * 1000).toLocaleString()],
-                ['Meta Hash', shipment.sphincsPqMetaHash.slice(0, 18) + '…'],
-                ['Seal FP', shipment.nfcSealFingerprint.slice(0, 18) + '…'],
+                ['Registered', new Date(shipment.registeredAt * 1000).toLocaleString()],
+                ['Meta Hash', shipment.sphincsPqMetaHash.slice(0, 24) + '…'],
+                ['Seal FP', shipment.nfcSealFingerprint.slice(0, 24) + '…'],
               ].map(([k, v]) => (
-                <tr key={k}>
-                  <td style={{ padding: '0.3rem 0.5rem', color: '#6b7280', whiteSpace: 'nowrap' }}>{k}</td>
-                  <td style={{ padding: '0.3rem 0.5rem', fontWeight: 500, wordBreak: 'break-all', fontFamily: k === 'DID' || k === 'Meta Hash' || k === 'Seal FP' || k === 'Registrar' ? 'monospace' : undefined, fontSize: k === 'Registrar' ? '0.7rem' : undefined }}>{v}</td>
+                <tr key={k} style={{ borderBottom: '1px solid #e2e8f0' }}>
+                  <td style={{ padding: '8px 0', color: '#64748b', whiteSpace: 'nowrap', width: 120 }}>{k}</td>
+                  <td style={{ padding: '8px 0', fontWeight: 600, color: '#0f172a', fontFamily: k === 'DID' || k === 'Meta Hash' || k === 'Seal FP' || k === 'Registrar' ? 'monospace' : undefined }}>{v}</td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
       )}
-      {lookupDone && !shipment && (
-        <div style={{ marginTop: '0.5rem', color: '#991b1b', fontSize: '0.8rem' }}>Shipment not found on-chain.</div>
-      )}
+      {lookupDone && !shipment && <div style={{ marginTop: 16, color: '#EF4444', fontSize: 13, background: '#fef2f2', padding: '12px 16px', borderRadius: 12 }}>Shipment not found on-chain.</div>}
     </div>
   );
 }
@@ -216,52 +193,47 @@ function ShipmentAuditLookup() {
 export default function BlockchainPanel({ role }: BlockchainPanelProps) {
   const { isConnected, isGanache, connect } = useMetaMask();
 
-  // Not connected prompt
   if (!isConnected || !isGanache) {
     return (
-      <div className="card">
-        <div className="card-header">
-          <span className="card-title">⛓ On-Chain Layer</span>
+      <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #e2e8f0', overflow: 'hidden', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' }}>
+        <div style={{ padding: '16px 24px', borderBottom: '1px solid #f1f5f9', background: '#f8fafc', display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ fontWeight: 700, fontSize: 15, color: '#0f172a' }}>⛓ On-Chain Layer</span>
         </div>
-        <div className="card-body" style={{ textAlign: 'center', padding: '2rem' }}>
-          <div style={{ fontSize: '2.5rem', marginBottom: '0.75rem' }}>🦊</div>
-          <div style={{ fontWeight: 600, marginBottom: '0.4rem' }}>
-            {!isConnected ? 'Connect MetaMask to interact with the blockchain' : 'Switch to Ganache network (Chain ID 1337)'}
+        <div style={{ padding: 48, textAlign: 'center' }}>
+          <div style={{ fontSize: 64, marginBottom: 16 }}>🦊</div>
+          <div style={{ fontWeight: 700, fontSize: 18, color: '#0f172a', marginBottom: 8 }}>
+            {!isConnected ? 'Connect MetaMask' : 'Switch to Ganache Network'}
           </div>
-          <div style={{ fontSize: '0.8rem', color: '#6b7280', marginBottom: '1rem' }}>
+          <div style={{ fontSize: 14, color: '#64748b', marginBottom: 24, maxWidth: 400, margin: '0 auto 24px' }}>
             Required for on-chain shipment registration, handoff verification, and freshness scoring.
           </div>
-          <button className="btn btn-primary" onClick={connect} style={{ background: '#F6851B' }}>
-            🦊 Connect MetaMask
+          <button onClick={connect} style={{ background: '#F6851B', color: '#fff', border: 'none', borderRadius: 8, padding: '12px 24px', fontWeight: 700, fontSize: 15, cursor: 'pointer', boxShadow: '0 4px 12px rgba(246,133,27,0.3)' }}>
+            🦊 {isConnected ? 'Switch to Ganache' : 'Connect MetaMask'}
           </button>
         </div>
       </div>
     );
   }
 
-  // Not deployed prompt
   if (!allDeployed) {
     return (
-      <div className="card">
-        <div className="card-header">
-          <span className="card-title">⛓ On-Chain Layer</span>
+      <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #e2e8f0', overflow: 'hidden', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' }}>
+        <div style={{ padding: '16px 24px', borderBottom: '1px solid #f1f5f9', background: '#f8fafc' }}>
+          <span style={{ fontWeight: 700, fontSize: 15, color: '#0f172a' }}>⛓ On-Chain Layer</span>
         </div>
-        <div className="card-body">
+        <div style={{ padding: 24 }}>
           <ContractStatusGrid />
-          <div className="alert alert-warning">
-            ⚠ Contracts not fully deployed. Run the deployment script:
-            <pre style={{ marginTop: '0.5rem', fontSize: '0.75rem', background: '#1f2937', color: '#e2e8f0', padding: '0.5rem 0.75rem', borderRadius: '0.35rem', overflowX: 'auto' }}>
+          <div style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 12, padding: 20 }}>
+            <div style={{ fontWeight: 700, color: '#92400e', marginBottom: 12 }}>⚠ Contracts not fully deployed.</div>
+            <pre style={{ background: '#1e293b', color: '#f8fafc', padding: 16, borderRadius: 8, fontSize: 12, overflowX: 'auto', marginBottom: 12 }}>
 {`cd contracts/foundry
 forge script script/Deploy.s.sol \\
   --rpc-url http://127.0.0.1:7545 \\
   --private-key <GANACHE_PRIVATE_KEY> \\
   --broadcast`}
             </pre>
-            <div style={{ fontSize: '0.75rem', marginTop: '0.5rem' }}>
-              Then add addresses to <code>apps/edge-pwa/.env.local</code>:
-              <br /><code>VITE_REGISTRY_ADDRESS=0x…</code>
-              <br /><code>VITE_DWH_ADDRESS=0x…</code>
-              <br /><code>VITE_FRESHNESS_ADDRESS=0x…</code>
+            <div style={{ fontSize: 13, color: '#92400e' }}>
+              Then add addresses to <code style={{ background: 'rgba(255,255,255,0.5)', padding: '2px 6px', borderRadius: 4 }}>apps/edge-pwa/.env.local</code>
             </div>
           </div>
         </div>
@@ -269,61 +241,50 @@ forge script script/Deploy.s.sol \\
     );
   }
 
-  // ─── Role-specific content ──────────────────────────────────────
-
   return (
-    <div className="card">
-      <div className="card-header">
-        <span className="card-title">⛓ On-Chain Layer — {getRoleTitle(role)}</span>
-        <span style={{ fontSize: '0.7rem', padding: '0.2rem 0.5rem', background: '#D1FAE5', color: '#065f46', borderRadius: '9999px', fontWeight: 600 }}>
-          Live on Ganache
-        </span>
+    <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #e2e8f0', overflow: 'hidden', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' }}>
+      <div style={{ padding: '16px 24px', borderBottom: '1px solid #f1f5f9', background: '#f8fafc', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <span style={{ fontWeight: 800, fontSize: 15, color: '#0f172a' }}>⛓ On-Chain Layer — {getRoleTitle(role)}</span>
+        <span style={{ background: '#d1fae5', color: '#065f46', borderRadius: 999, padding: '4px 12px', fontSize: 12, fontWeight: 700 }}>Live on Ganache</span>
       </div>
-      <div className="card-body" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+      <div style={{ padding: 32 }}>
         <ContractStatusGrid />
 
-        {/* Manufacturer: register + freshness */}
         {role === UserRole.MANUFACTURER && (
-          <>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 32 }}>
             <RegisterShipmentForm />
-            <hr style={{ border: 'none', borderTop: '1px solid #e5e7eb' }} />
+            <div style={{ height: 1, background: '#e2e8f0' }} />
             <FreshnessLookup />
-          </>
+          </div>
         )}
 
-        {/* Carrier: freshness lookup (they monitor in-transit) */}
         {role === UserRole.CARRIER && (
-          <>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
             <FreshnessLookup />
-            <div className="alert" style={{ background: '#fffbeb', color: '#92400e', border: '1px solid #fcd34d' }}>
-              🚛 As a carrier, handoff signatures are submitted automatically when you complete the physical handoff flow.
-              You can look up any shipment's on-chain freshness score here.
+            <div style={{ background: '#fffbeb', color: '#92400e', border: '1px solid #fde68a', borderRadius: 12, padding: 16, fontSize: 13, lineHeight: 1.5 }}>
+              <span style={{ fontSize: 18, marginRight: 8 }}>🚛</span> As a carrier, handoff signatures are submitted automatically when you complete the physical handoff flow. You can look up any shipment's on-chain freshness score here.
             </div>
-          </>
+          </div>
         )}
 
-        {/* Receiver: freshness + contest info */}
         {role === UserRole.RECEIVER && (
-          <>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
             <FreshnessLookup />
-            <div className="alert" style={{ background: '#eff6ff', color: '#1d4ed8', border: '1px solid #93c5fd' }}>
-              📦 After accepting a handoff, the dual-witness signatures are anchored on-chain.
-              If the seal or temperature data fails verification, use the Contest button to flag the handoff.
+            <div style={{ background: '#eff6ff', color: '#1d4ed8', border: '1px solid #bfdbfe', borderRadius: 12, padding: 16, fontSize: 13, lineHeight: 1.5 }}>
+              <span style={{ fontSize: 18, marginRight: 8 }}>📦</span> After accepting a handoff, the dual-witness signatures are anchored on-chain. If the seal or temperature data fails verification, use the Contest button to flag the handoff.
             </div>
-          </>
+          </div>
         )}
 
-        {/* Regulator: full audit + freshness + shipment count */}
         {role === UserRole.REGULATOR && (
-          <>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 32 }}>
             <ShipmentAuditLookup />
-            <hr style={{ border: 'none', borderTop: '1px solid #e5e7eb' }} />
+            <div style={{ height: 1, background: '#e2e8f0' }} />
             <FreshnessLookup />
-            <div className="alert" style={{ background: '#fef2f2', color: '#991b1b', border: '1px solid #fca5a5' }}>
-              ⚖️ Full read access to all on-chain records. Use the Deep Audit feature to query
-              handoff history, contested shipments, and freshness score trends.
+            <div style={{ background: '#fef2f2', color: '#991b1b', border: '1px solid #fecaca', borderRadius: 12, padding: 16, fontSize: 13, lineHeight: 1.5 }}>
+              <span style={{ fontSize: 18, marginRight: 8 }}>⚖️</span> Full read access to all on-chain records. Use the Deep Audit feature to query handoff history, contested shipments, and freshness score trends.
             </div>
-          </>
+          </div>
         )}
       </div>
     </div>

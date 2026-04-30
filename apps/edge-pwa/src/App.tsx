@@ -8,6 +8,8 @@ import { InitiateHandoff } from './features/handoff/sender/InitiateHandoff';
 import { AcceptHandoff } from './features/handoff/receiver/AcceptHandoff';
 import TrackingPage from './features/tracking/TrackingPage';
 import { UserRole } from './features/auth/roles';
+import RegulatorStatsPage from './features/dashboards/RegulatorStatsPage';
+
 
 // Physical Layer Pages
 import PhysicalLayout from './layouts/PhysicalLayout';
@@ -16,6 +18,7 @@ import VerifyPage from './pages/VerifyPage';
 import HistoryPage from './pages/HistoryPage';
 import DocumentationPage from './pages/DocumentationPage';
 import AboutPage from './pages/AboutPage';
+import InspectPage from './pages/InspectPage';
 
 import './index.css';
 
@@ -69,6 +72,7 @@ export default function App() {
         <Routes>
           {/* Public */}
           <Route path="/login" element={<LoginPage />} />
+          <Route path="/inspect" element={<InspectPage />} />
 
           {/* Role-based home */}
           <Route
@@ -106,6 +110,16 @@ export default function App() {
             element={
               <ProtectedRoute>
                 <TrackingPage />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* Regulator Stats Page */}
+          <Route
+            path="/regulator/stats"
+            element={
+              <ProtectedRoute allowedRoles={[UserRole.REGULATOR]}>
+                <RegulatorStatsPage />
               </ProtectedRoute>
             }
           />
